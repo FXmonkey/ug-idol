@@ -1,0 +1,97 @@
+/* 主容器布局 */
+body {
+    margin: 0;
+    padding: 0;
+    background: #1a1a1a;
+    color: #fff;
+    font-family: Arial, sans-serif;
+}
+
+.container {
+    display: flex;
+    gap: 20px;
+    padding: 20px;
+    min-height: 100vh;
+}
+
+.left-column {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.right-column {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.idol-list {
+    background: #2e2e2e;
+    padding: 15px;
+    border-radius: 10px;
+}
+
+.idol-item {
+    padding: 10px;
+    border-bottom: 1px solid #555;
+    cursor: pointer;
+}
+
+.idol-item:hover {
+    background: #3d3d3d;
+}
+
+.idol-info {
+    background: #2e2e2e;
+    padding: 15px;
+    border-radius: 10px;
+    flex: 1;
+}
+
+.danmaku-wall {
+    background: #2e2e2e;
+    padding: 15px;
+    border-radius: 10px;
+    flex: 1;
+    overflow-y:hidden;
+    overflow-x:hidden;
+}
+
+.fan-profile {
+    background: #2e2e2e;
+    padding: 15px;
+    border-radius: 10px;
+    flex: 1;
+}
+
+.danmaku {
+    white-space: nowrap;
+    animation: scroll 10s linear infinite;
+}
+
+@keyframes scroll {
+    0% { transform: translateX(100%); }
+    100% { transform: translateX(-100%); }
+}
+
+.fan-badge {
+    display: inline-block;
+    margin: 5px;
+    padding: 5px;
+    background: #ff00ff;
+    border-radius: 5px;
+    font-size: 12px;
+}
+
+.input-box {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #2e2e2e;
+    padding: 10px;
+    border-radius: 10px;
+}

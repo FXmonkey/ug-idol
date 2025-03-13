@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>地下偶像应援站</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- 主容器 -->
+    <div class="container">
+        <!-- 左侧区域 -->
+        <div class="left-column">
+            <div class="idol-list">
+                <h2>偶像列表</h2>
+                <div id="idol-list-container"></div>
+            </div>
+            <div class="idol-info">
+                <h3>详细信息</h3>
+                <div id="idol-description">
+                    <p>请选择一位偶像</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右侧区域 -->
+        <div class="right-column">
+            <div class="danmaku-wall">
+                <h3>实时弹幕</h3>
+                <div id="danmaku-container"></div>
+            </div>
+            <div class="fan-profile">
+                <h3>粉丝画像</h3>
+                <div id="fan-profile-container">
+                    <p>未发送弹幕</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 输入框 -->
+    <div class="input-box">
+        <input type="text" id="danmaku-input" placeholder="发送弹幕">
+        <button onclick="sendDanmaku()">发送</button>
+    </div>
+
+    <script src="https://cdn.socket.io/4.5.1/socket.io.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
