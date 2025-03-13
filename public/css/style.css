@@ -1,10 +1,10 @@
-/* 主容器布局 */
+/*  修改 CSS */
 body {
     margin: 0;
     padding: 0;
-    background: #1a1a1a;
-    color: #fff;
-    font-family: Arial, sans-serif;
+    background: linear-gradient(to bottom, #ffe6f2, #e6f9ff); /*  渐变背景 */
+    color: #333; /*  深色文字 */
+    font-family: "M PLUS Rounded 1c", sans-serif; /*  圆角字体 */
 }
 
 .container {
@@ -29,61 +29,69 @@ body {
 }
 
 .idol-list {
-    background: #2e2e2e;
+    background: #fff; /*  白色背景 */
     padding: 15px;
-    border-radius: 10px;
+    border-radius: 15px; /*  更大的圆角 */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /*  阴影 */
 }
 
 .idol-item {
     padding: 10px;
-    border-bottom: 1px solid #555;
+    border-bottom: 1px solid #eee;
     cursor: pointer;
+    transition: background-color 0.3s ease; /*  过渡效果 */
 }
 
 .idol-item:hover {
-    background: #3d3d3d;
+    background-color: #f9f9f9;
 }
 
 .idol-info {
-    background: #2e2e2e;
+    background: #fff;
     padding: 15px;
-    border-radius: 10px;
+    border-radius: 15px;
     flex: 1;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.idol-info img {
+    border-radius: 10px;
+    margin-bottom: 10px;
 }
 
 .danmaku-wall {
-    background: #2e2e2e;
+    background: #fff;
     padding: 15px;
-    border-radius: 10px;
+    border-radius: 15px;
     flex: 1;
     overflow-y: hidden;
     overflow-x: hidden;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
 .fan-profile {
-    background: #2e2e2e;
+    background: #fff;
     padding: 15px;
-    border-radius: 10px;
+    border-radius: 15px;
     flex: 1;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
 .danmaku {
     white-space: nowrap;
     animation: scroll 10s linear infinite;
+    color: #e91e63; /*  粉色弹幕 */
+    font-size: 16px;
 }
 
 @keyframes scroll {
-    0% { transform: translateX(100%); }
-    100% { transform: translateX(-100%); }
-}
+    0% {
+        transform: translateX(100%);
+    }
 
-.fan-badge {
-    display: inline-block;
-    margin: 5px;
-    padding: 5px;
-    background: #ff00ff;
-    border-radius: 5px;
-    font-size: 12px;
+    100% {
+        transform: translateX(-100%);
+    }
 }
 
 .input-box {
@@ -91,7 +99,82 @@ body {
     bottom: 20px;
     left: 50%;
     transform: translateX(-50%);
-    background: #2e2e2e;
+    background: #fff;
     padding: 10px;
-    border-radius: 10px;
+    border-radius: 15px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    display: flex;
+    gap: 10px;
+    align-items: center;
 }
+
+.input-box input[type="text"],
+.input-box input[type="number"] {
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+}
+
+.input-box button {
+    padding: 8px 15px;
+    background-color: #e91e63; /*  粉色按钮 */
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.input-box button:hover {
+    background-color: #c2185b;
+}
+
+/*  粉丝画像样式 */
+.fan-profile {
+    background: #fff;
+    padding: 15px;
+    border-radius: 15px;
+    flex: 1;
+}
+
+.profile-buttons {
+    margin-bottom: 10px;
+}
+
+.profile-buttons button {
+    margin-right: 5px;
+    padding: 8px 15px;
+    background-color: #f48fb1; /*  浅粉色按钮 */
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.profile-buttons button:hover {
+    background-color: #f06292;
+}
+
+#ranking-list {
+    display: none;
+}
+
+#ranking-list ol {
+    list-style: none;
+    padding: 0;
+}
+
+#ranking-list li {
+    display: flex;
+    align-items: center;
+    padding: 5px 0;
+    border-bottom: 1px solid #eee;
+}
+
+#ranking-list li img {
+    margin-right: 5px;
+    border-radius: 50%;
+}
+/* 添加以下代码以引入字体 */
+@import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700&display=swap');

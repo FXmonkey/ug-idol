@@ -1,9 +1,13 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <title>地下偶像应援站</title>
     <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
+
 <body>
     <!-- 主容器 -->
     <div class="container">
@@ -20,29 +24,34 @@
                 </div>
             </div>
         </div>
-
         <!-- 右侧区域 -->
         <div class="right-column">
             <div class="danmaku-wall">
                 <h3>实时弹幕</h3>
                 <div id="danmaku-container"></div>
             </div>
+            <!-- 粉丝画像 -->
             <div class="fan-profile">
                 <h3>粉丝画像</h3>
-                <div id="fan-profile-container">
-                    <p>未发送弹幕</p>
+                <div class="profile-buttons">
+                    <button onclick="showLocationChart()">地域分布</button>
+                    <button onclick="showAgeChart()">年龄分布</button>
+                    <button onclick="showRanking()">弹幕数量排名</button>
                 </div>
+                <canvas id="location-chart" width="400" height="200"></canvas>
+                <canvas id="age-chart" width="400" height="200"></canvas>
+                <div id="ranking-list"></div>
             </div>
         </div>
     </div>
-
     <!-- 输入框 -->
     <div class="input-box">
         <input type="text" id="danmaku-input" placeholder="发送弹幕">
+        <input type="number" id="age-input" placeholder="输入你的年龄">
         <button onclick="sendDanmaku()">发送</button>
     </div>
-
     <script src="https://cdn.socket.io/4.5.1/socket.io.min.js"></script>
     <script src="script.js"></script>
 </body>
+
 </html>
