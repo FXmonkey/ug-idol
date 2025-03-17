@@ -1,0 +1,60 @@
+/* public/css/auth.css */
+
+/* 注册/登录页面样式 */
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f0f0f0;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+}
+
+#auth-forms {
+    background: #fff;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    width: 300px;
+    text-align: center;
+}
+
+#auth-forms h2 {
+    margin-bottom: 20px;
+    color: #333;
+}
+
+#auth-forms input {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 15px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    box-sizing: border-box;
+}
+
+#auth-forms button {
+    width: 100%;
+    padding: 10px;
+    background-color: #007bff;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+#auth-forms button:hover {
+    background-color: #0056b3;
+}
+
+#auth-forms p {
+    margin-top: 15px;
+    color: #666;
+}
+
+#auth-forms a {
+    color: #007bff;
+    text-decoration: none;
+}

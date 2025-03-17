@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>地下偶像应援站</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+<!-- 个人信息区域 -->
+    <div id="user-info">
+        <div class="dropdown">
+            <div class="avatar-wrapper">
+                <img src="images/default_avatar.png" alt="头像" class="avatar">
+            </div>
+            <!-- 在 dropdown-content 中添加功能 -->
+            <div class="dropdown-content" id="myDropdown">
+                <div class="user-profile">
+                    <p>用户名：<span id="username">John Doe</span></p>
+                    <p>邮箱：<span id="email">johndoe@example.com</span></p>
+                </div>
+                <a href="#change-password" id="change-password">修改密码</a>
+                <button id="logout-button" onclick="logout()">退出登录</button>
+            </div>
+        </div>
+
+    </div>
+    <!-- 主容器 -->
+    <div class="container">
+        <!-- 左侧区域 -->
+        <div class="left-column">
+            <div class="idol-list">
+                <h2>偶像列表</h2>
+                <div id="idol-list-container"></div>
+            </div>
+            <div class="idol-info">
+                <h3>详细信息</h3>
+                <div id="idol-description">
+                    <p>请选择一位偶像</p>
+                </div>
+            </div>
+        </div>
+        <!-- 右侧区域 -->
+        <div class="right-column">
+            <div class="danmaku-wall">
+                <h3>实时弹幕</h3>
+                <div id="danmaku-container"></div>
+            </div>
+            <!-- 粉丝画像 -->
+            <div class="fan-profile">
+                <h3>粉丝画像</h3>
+                <div class="profile-buttons">
+                    <button onclick="showLocationChart()">地域分布</button>
+                    <button onclick="showAgeChart()">年龄分布</button>
+                    <button onclick="showRanking()">弹幕数量排名</button>
+                </div>
+                <canvas id="location-chart" width="400" height="200"></canvas>
+                <canvas id="age-chart" width="400" height="200"></canvas>
+                <div id="ranking-list"></div>
+            </div>
+        </div>
+    </div>
+    <!-- 输入框 -->
+    <div class="input-box">
+        <input type="text" id="danmaku-input" placeholder="发送弹幕">
+        <input type="number" id="age-input" placeholder="输入你的年龄">
+        <button onclick="sendDanmaku()">发送</button>
+    </div>
+    <script src="https://cdn.socket.io/4.5.1/socket.io.min.js"></script>
+    <script src="script.js"></script>
+    <script>
+        // 模拟从后端获取用户信息
+        function getUserInfo() {
+            // 这里可以替换为实际的 API 请求，如使用 fetch 或 XMLHttpRequest
+            return {
+                username: 'Jane Smith',
+                email: 'janesmith@example.com'
+            };
+        }
+
+        // 初始化用户信息
+        function initUserInfo() {
+            const userInfo = getUserInfo();
+            document.getElementById('username').textContent = userInfo.username;
+            document.getElementById('email').textContent = userInfo.email;
+        }
+
+        // 切换下拉菜单的显示和隐藏
+        function toggleDropdown() {
+            document.getElementById("myDropdown").classList.toggle("show");
+        }
+
+        // 点击页面其他地方时关闭下拉菜单
+        window.onclick = function (event) {
+            if (!event.target.matches('.avatar')) {
+                var dropdowns = document.getElementsByClassName("dropdown-content");
+                for (var i = 0; i < dropdowns.length; i++) {
+                    var openDropdown = dropdowns[i];
+                    if (openDropdown.classList.contains('show')) {
+                        openDropdown.classList.remove('show');
+                    }
+                }
+            }
+        }
+
+        // 页面加载时初始化用户信息
+        window.onload = initUserInfo;
+    </script>
+</body>
+
+</html>
