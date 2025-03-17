@@ -39,44 +39,44 @@ document.addEventListener('DOMContentLoaded', () => {
     // 检查登录状态
     checkLoginStatus();
     // 修改下拉菜单事件监听
-    // 修改下拉菜单事件监听
     document.addEventListener('DOMContentLoaded', () => {
-        const dropdown = document.querySelector('.dropdown');
-        const avatarWrapper = document.querySelector('.avatar-wrapper');
-        const dropdownContent = document.querySelector('.dropdown-content');
+        // 密码修改模态框
+        const modal = document.createElement('div');
+        modal.innerHTML = `
+            <div class="password-modal" style="display:none;">
+                <div class="modal-content">
+                    <h3>修改密码</h3>
+                    <input type="password" id="old-pwd" placeholder="旧密码">
+                    <input type="password" id="new-pwd" placeholder="新密码">
+                    <button onclick="submitPasswordChange()">提交</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
     
-        // 调整鼠标移动逻辑
-        let isHovering = false;
-        
-        [avatarWrapper, dropdownContent].forEach(element => {
-            element.addEventListener('mouseenter', () => {
-                dropdownContent.style.display = 'block';
-                isHovering = true;
-            });
-            
-            element.addEventListener('mouseleave', (e) => {
-                // 延迟执行以检测是否移动到关联元素
-                setTimeout(() => {
-                    if (!isHovering) {
-                        dropdownContent.style.display = 'none';
-                    }
-                }, 50);
-            });
-        });
-    
-        // 全局检测鼠标状态
-        document.addEventListener('mousemove', (e) => {
-            isHovering = dropdown.contains(e.target) || dropdownContent.contains(e.target);
+        // 绑定修改密码点击事件
+        document.getElementById('change-password').addEventListener('click', () => {
+            document.querySelector('.password-modal').style.display = 'flex';
         });
     });
 });
-// 监听来自服务器的 setUserId 事件
-// socket.on('setUserId', (newUserId) => {  //不需要了
-//     console.log(`来自后端新的newUserId = ${newUserId}`);
-//     userId = newUserId;
-//     setCookie('userId', userId, 365);
-// });
-// 获取偶像列表
+// 新增密码修改函数
+function submitPasswordChange() {
+    const oldPwd = document.getElementById('old-pwd').value;
+    const newPwd = document.getElementById('new-pwd').value;
+
+    fetch('/api/change-password', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ oldPassword: oldPwd, newPassword: newPwd })
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert(data.message);
+        document.querySelector('.password-modal').style.display = 'none';
+    })
+    .catch(error => console.error('修改失败:', error));
+}
 // 在 fetchIdols 函数中添加默认选择逻辑
 function fetchIdols() {
     fetch('/api/idols')
@@ -346,18 +346,27 @@ function login(username, password) {
         })
         .catch(error => console.error('登录失败:', error));
 }
-// 登出函数
+// 修改登出函数（约第300行）
 function logout() {
+    console.log('[Debug] 开始执行登出流程');
     fetch('/api/logout', {
-            method: 'POST'
-        })
-        .then(response => response.json())
-        .then(data => {
-            alert(data.message);
-            // 登出成功后更新页面状态
-            checkLoginStatus();
-        })
-        .catch(error => console.error('登出失败:', error));
+        method: 'POST',
+        credentials: 'same-origin' // 确保携带cookie
+    })
+    .then(response => {
+        if (!response.ok) throw new Error('登出失败');
+        return response.json();
+    })
+    .then(data => {
+        // 强制清除前端会话状态
+        document.cookie = 'connect.sid=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;'; 
+        window.location.href = '/login.html';
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        // 强制跳转作为保底
+        window.location.href = '/login.html?force=true'; 
+    });
 }
 // 检查登录状态
 function checkLoginStatus() {
@@ -385,3 +394,111 @@ function checkLoginStatus() {
         })
         .catch(error => console.error('检查登录状态失败:', error));
 }
+
+// 在DOMContentLoaded中添加密码修改弹窗 (HTML+CSS)
+document.addEventListener('DOMContentLoaded', () => {
+    // 创建模态框
+    const modal = document.createElement('div');
+    modal.innerHTML = `
+        <div class="password-modal">
+            <div class="modal-overlay"></div>
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>🔐 修改密码</h3>
+                    <span class="close-btn">&times;</span>
+                </div>
+                <div class="form-group">
+                    <label>旧密码</label>
+                    <input type="password" id="old-pwd" class="cute-input">
+                </div>
+                <div class="form-group">
+                    <label>新密码</label>
+                    <input type="password" id="new-pwd" class="cute-input">
+                </div>
+                <div class="form-group">
+                    <label>确认新密码</label>
+                    <input type="password" id="confirm-pwd" class="cute-input">
+                </div>
+                <div class="error-msg" id="password-error"></div>
+                <div class="modal-actions">
+                    <button class="cancel-btn">取消</button>
+                    <button class="confirm-btn">确认修改</button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+
+    // 控制弹窗显示
+    // 在密码弹窗显示时添加滚动锁定
+    document.querySelector('.password-modal').addEventListener('click', (e) => {
+        if (e.target.closest('.modal-content')) return;
+        closeModal();
+    });
+    
+    // 修改弹窗显示逻辑（约第369行附近）
+    document.getElementById('change-password').addEventListener('click', () => {
+        document.querySelector('.password-modal').style.display = 'block';
+        document.documentElement.classList.add('disable-scroll'); // 新增滚动锁定
+    });
+
+    document.getElementById('logout-button').addEventListener('click', logout);
+    // 关闭弹窗逻辑
+    const closeModal = () => {
+        document.querySelector('.password-modal').style.display = 'none';
+        // 清空输入
+        ['#old-pwd', '#new-pwd', '#confirm-pwd'].forEach(selector => {
+            document.querySelector(selector).value = '';
+        });
+        document.getElementById('password-error').textContent = '';
+    };
+
+    // 绑定关闭事件
+    modal.querySelector('.modal-overlay').addEventListener('click', closeModal);
+    modal.querySelector('.close-btn').addEventListener('click', closeModal);
+    modal.querySelector('.cancel-btn').addEventListener('click', closeModal);
+
+    // 提交逻辑
+    modal.querySelector('.confirm-btn').addEventListener('click', () => {
+        const oldPwd = document.getElementById('old-pwd').value;
+        const newPwd = document.getElementById('new-pwd').value;
+        const confirmPwd = document.getElementById('confirm-pwd').value;
+        const errorEl = document.getElementById('password-error');
+
+        // 前端验证
+        if (!oldPwd || !newPwd || !confirmPwd) {
+            errorEl.textContent = '请填写所有字段';
+            return;
+        }
+        if (newPwd !== confirmPwd) {
+            errorEl.textContent = '两次输入的新密码不一致';
+            return;
+        }
+        if (newPwd.length < 6) {
+            errorEl.textContent = '密码长度不能少于6位';
+            return;
+        }
+
+        // 提交到后端
+        fetch('/api/change-password', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                oldPassword: oldPwd, 
+                newPassword: newPwd 
+            })
+        })
+        .then(response => {
+            if (!response.ok) throw response;
+            return response.json();
+        })
+        .then(data => {
+            alert('✅ ' + data.message);
+            closeModal();
+        })
+        .catch(async (error) => {
+            const err = await error.json();
+            errorEl.textContent = '❌ ' + (err.error || '修改失败');
+        });
+    });
+});

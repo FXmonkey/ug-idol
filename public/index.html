@@ -14,11 +14,14 @@
             <div class="avatar-wrapper">
                 <img src="images/default_avatar.png" alt="头像" class="avatar">
             </div>
+            <!-- 在 dropdown-content 中添加功能 -->
             <div class="dropdown-content" id="myDropdown">
-                <p>用户名：<span id="username">John Doe</span></p>
-                <p>邮箱：<span id="email">johndoe@example.com</span></p>
-                <a href="#">修改密码</a>
-                <a href="#" onclick="logout()">登出</a>
+                <div class="user-profile">
+                    <p>用户名：<span id="username">John Doe</span></p>
+                    <p>邮箱：<span id="email">johndoe@example.com</span></p>
+                </div>
+                <a href="#change-password" id="change-password">修改密码</a>
+                <button id="logout-button" onclick="logout()">退出登录</button>
             </div>
         </div>
 
@@ -86,12 +89,6 @@
         // 切换下拉菜单的显示和隐藏
         function toggleDropdown() {
             document.getElementById("myDropdown").classList.toggle("show");
-        }
-
-        // 登出函数
-        function logout() {
-            alert('你已登出！');
-            // 这里可以添加实际的登出逻辑，如清除会话等
         }
 
         // 点击页面其他地方时关闭下拉菜单

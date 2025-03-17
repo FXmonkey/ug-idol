@@ -317,3 +317,23 @@ const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
     console.log(`服务器运行在 http://localhost:${PORT}`);
 });
+// 新增修改密码API
+app.put('/api/change-password', async (req, res) => {
+    const { oldPassword, newPassword } = req.body;
+    const userId = req.session.userId;
+
+    try {
+        const [rows] = await pool.query('SELECT * FROM users WHERE id = ?', [userId]);
+        const user = rows[0];
+        
+        if (!user || user.password !== oldPassword) {
+            return res.status(400).json({ error: '旧密码不正确' });
+        }
+
+        await pool.query('UPDATE users SET password = ? WHERE id = ?', [newPassword, userId]);
+        res.json({ message: '密码修改成功' });
+    } catch (error) {
+        console.error('密码修改失败:', error);
+        res.status(500).json({ error: '密码修改失败' });
+    }
+});
