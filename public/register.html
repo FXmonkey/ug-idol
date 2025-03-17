@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>注册</title>
+    <link rel="stylesheet" href="css/style.css">
+    <!-- 添加注册页面专用样式 -->
+    <link rel="stylesheet" href="css/auth.css">
+</head>
+
+<body>
+    <!-- 注册表单 -->
+    <div id="auth-forms">
+        <div id="register-form">
+            <h2>注册</h2>
+            <input type="text" id="register-username" placeholder="用户名">
+            <input type="password" id="register-password" placeholder="密码">
+            <button onclick="register(document.getElementById('register-username').value, document.getElementById('register-password').value)">注册</button>
+            <p>已有账号？ <a href="login.html">立即登录</a></p>
+        </div>
+    </div>
+    <script src="https://cdn.socket.io/4.5.1/socket.io.min.js"></script>
+    <script src="script.js"></script>
+</body>
+
+</html>

@@ -4,11 +4,26 @@
 <head>
     <title>地下偶像应援站</title>
     <link rel="stylesheet" href="css/style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
 <body>
+<!-- 个人信息区域 -->
+    <div id="user-info">
+        <div class="dropdown">
+            <div class="avatar-wrapper">
+                <img src="images/default_avatar.png" alt="头像" class="avatar">
+            </div>
+            <div class="dropdown-content">
+                <a href="#">用户名：<span id="username"></span></a>
+                <a href="#">邮箱：<span id="email"></span></a>
+                <a href="#">修改密码</a>
+                <a href="#" onclick="logout()">登出</a>
+            </div>
+        </div>
+        <a href="register.html" id="register-link">注册</a>
+        <a href="login.html" id="login-link">登录</a>
+    </div>
     <!-- 主容器 -->
     <div class="container">
         <!-- 左侧区域 -->

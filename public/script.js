@@ -20,13 +20,13 @@ function setCookie(name, value, days) {
 }
 let currentIdol = null;
 let danmakuList = [];
-let userId = getCookie('userId');
+// let userId = getCookie('userId'); //  不需要了
 // const userId = "dw3y14npwpk2rzdci21kw4"; //  不能写死
-if (!userId) {
-    // userId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-    // setCookie('userId', userId, 365);
-    console.log(`当前没有userId`);
-}
+// if (!userId) {  //不需要了
+//     // userId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+//     // setCookie('userId', userId, 365);
+//     console.log(`当前没有userId`);
+// }
 let locationChart, ageChart;
 let locationChartCanvas, ageChartCanvas
 document.addEventListener('DOMContentLoaded', () => {
@@ -42,13 +42,18 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         socket.emit('update-user-info', userInfo);
     });
+    // 检查登录状态
+    checkLoginStatus();
+    document.querySelector('.avatar-wrapper').addEventListener('click', function() {
+        document.querySelector('.dropdown-content').style.display = 'block';
+    });
 });
 // 监听来自服务器的 setUserId 事件
-socket.on('setUserId', (newUserId) => {
-    console.log(`来自后端新的newUserId = ${newUserId}`);
-    userId = newUserId;
-    setCookie('userId', userId, 365);
-});
+// socket.on('setUserId', (newUserId) => {  //不需要了
+//     console.log(`来自后端新的newUserId = ${newUserId}`);
+//     userId = newUserId;
+//     setCookie('userId', userId, 365);
+// });
 // 获取偶像列表
 function fetchIdols() {
     fetch('/api/idols')
@@ -236,4 +241,93 @@ function renderDanmaku() {
             danmakuContainer.appendChild(danmaku);
         }
     })
+}
+// 注册函数
+function register(username, password) {
+    fetch('/api/register', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                username,
+                password
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                alert(data.error);
+            } else {
+                alert(data.message);
+                // 注册成功后跳转到登录页面
+                window.location.href = 'login.html';
+            }
+        })
+        .catch(error => console.error('注册失败:', error));
+}
+// 登录函数
+function login(username, password) {
+    fetch('/api/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                username,
+                password
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                alert(data.error);
+            } else {
+                alert(data.message);
+                // 登录成功后更新页面状态
+                checkLoginStatus();
+                // 登录成功后跳转到主页面
+                window.location.href = '/';
+            }
+        })
+        .catch(error => console.error('登录失败:', error));
+}
+// 登出函数
+function logout() {
+    fetch('/api/logout', {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            alert(data.message);
+            // 登出成功后更新页面状态
+            checkLoginStatus();
+        })
+        .catch(error => console.error('登出失败:', error));
+}
+// 检查登录状态
+function checkLoginStatus() {
+    fetch('/api/checkLogin')
+        .then(response => response.json())
+        .then(data => {
+            const loginStatus = document.getElementById('login-status');
+            const profileLink = document.getElementById('profile-link');
+            const logoutButton = document.getElementById('logout-button');
+            const registerLink = document.getElementById('register-link');
+            const loginLink = document.getElementById('login-link');
+            if (data.isLogin) {
+                loginStatus.textContent = '已登录';
+                profileLink.style.display = 'inline';
+                logoutButton.style.display = 'inline';
+                registerLink.style.display = 'none';
+                loginLink.style.display = 'none';
+            } else {
+                loginStatus.textContent = '未登录';
+                profileLink.style.display = 'none';
+                logoutButton.style.display = 'none';
+                registerLink.style.display = 'inline';
+                loginLink.style.display = 'inline';
+            }
+        })
+        .catch(error => console.error('检查登录状态失败:', error));
 }
