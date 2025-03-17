@@ -1,11 +1,13 @@
 const socket = io('http://localhost:3000');
 let idols = [];
+
 // 获取 cookie
 function getCookie(name) {
     const value = `; ${document.cookie}`;
     const parts = value.split(`; ${name}=`);
     if (parts.length === 2) return parts.pop().split(';').shift();
 }
+
 // 设置 cookie
 function setCookie(name, value, days) {
     let expires = "";
@@ -21,8 +23,9 @@ let danmakuList = [];
 let userId = getCookie('userId');
 // const userId = "dw3y14npwpk2rzdci21kw4"; //  不能写死
 if (!userId) {
-    userId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-    setCookie('userId', userId, 365);
+    // userId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    // setCookie('userId', userId, 365);
+    console.log(`当前没有userId`);
 }
 let locationChart, ageChart;
 let locationChartCanvas, ageChartCanvas
@@ -39,6 +42,12 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         socket.emit('update-user-info', userInfo);
     });
+});
+// 监听来自服务器的 setUserId 事件
+socket.on('setUserId', (newUserId) => {
+    console.log(`来自后端新的newUserId = ${newUserId}`);
+    userId = newUserId;
+    setCookie('userId', userId, 365);
 });
 // 获取偶像列表
 function fetchIdols() {

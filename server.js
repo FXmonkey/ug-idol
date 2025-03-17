@@ -3,11 +3,13 @@ const http = require('http');
 const socketIo = require('socket.io');
 const mysql = require('mysql2/promise'); // 引入 MySQL2
 const app = express();
+const session = require('express-session'); // 引入 express-session
 const server = http.createServer(app);
 const io = socketIo(server, {
     cors: {
         origin: "*", // 允许所有来源，生产环境请修改为你的域名
-        methods: ["GET", "POST"]
+        methods: ["GET", "POST"],
+        credentials: true // 允许发送 cookie
     }
 });
 // MySQL 连接配置
@@ -22,84 +24,31 @@ async function initializeDatabase() {
     try {
         pool = mysql.createPool(dbConfig);
         console.log('Connected to MySQL');
-        // 创建 idols 表
-        // await pool.query(`
-        //     CREATE TABLE IF NOT EXISTS idols (
-        //         id INT PRIMARY KEY,
-        //         name VARCHAR(255),
-        //         image VARCHAR(255),
-        //         description TEXT,
-        //         phone VARCHAR(255),
-        //         age INT,
-        //         location VARCHAR(255)
-        //     )
-        // `);
-        // // 创建 fans 表
-        // await pool.query(`
-        //     CREATE TABLE IF NOT EXISTS fans (
-        //         userId VARCHAR(255) PRIMARY KEY,
-        //         username VARCHAR(255),
-        //         avatar VARCHAR(255),
-        //         device VARCHAR(255),
-        //         location VARCHAR(255),
-        //         age INT,
-        //         danmakuCount INT DEFAULT 0,
-        //         favoriteIdol INT,
-        //         FOREIGN KEY (favoriteIdol) REFERENCES idols(id)
-        //     )
-        // `);
-        // console.log('Tables created (if not exist)');
-        // // 初始化偶像数据
-        // await initializeIdols();
     } catch (error) {
         console.error('Database initialization error:', error);
     }
 }
-// 初始化偶像数据
-const initializeIdols = async () => {
-    try {
-        // 检查偶像数据是否已存在
-        const [rows] = await pool.query('SELECT COUNT(*) AS count FROM idols');
-        const idolCount = rows[0].count;
-        console.log(`idolCount: ${idolCount}`);
-        if (idolCount === 0) {
-            // 创建偶像数据
-            const idolsData = [{
-                id: 1,
-                name: "星野爱",
-                image: "images/1.jpg",
-                description: "18岁｜东京出身｜擅长rap",
-                phone: "iOS 15",
-                age: 18,
-                location: "东京"
-            }, {
-                id: 2,
-                name: "白石琴乃",
-                image: "images/2.jpg",
-                description: "19岁｜大阪出身｜舞蹈天才",
-                phone: "Android",
-                age: 19,
-                location: "大阪"
-            }];
-            // 插入偶像数据
-            for (const idol of idolsData) {
-                await pool.query(`
-                    INSERT INTO idols (id, name, image, description, phone, age, location)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
-                `, [idol.id, idol.name, idol.image, idol.description, idol.phone, idol.age, idol.location]);
-            }
-            console.log('Initialized idol data');
-        } else {
-            console.log('Idol data already exists');
-        }
-    } catch (err) {
-        console.error('Error initializing idol data:', err);
-    }
-};
 // 在启动服务器后初始化数据库
 (async () => {
     await initializeDatabase();
 })();
+// 配置 session
+app.use(session({
+    secret: 'your secret key', // 用于加密 session ID 的密钥
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+        secure: false, // 如果使用 HTTPS，则设置为 true
+        maxAge: 60 * 60 * 1000 // Session 过期时间，单位毫秒
+    }
+}));
+// 配置跨域资源共享
+app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', 'http://localhost:3000'); // 允许的来源
+    res.header('Access-Control-Allow-Credentials', 'true'); // 允许携带 cookie
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+    next();
+});
 // 静态资源目录
 app.use('/css', express.static(__dirname + '/public/css'));
 app.use('/images', express.static(__dirname + '/public/images'));
@@ -116,7 +65,23 @@ io.on('connection', async (socket) => {
     console.log('用户连接成功！');
     // 为新用户生成ID
     // const userId = generateUserId();
-    const userId = "dw3y14npwpk2rzdci21kw4";
+    let userId;
+    if (socket.handshake.headers.cookie) {
+        const cookies = socket.handshake.headers.cookie.split(';');
+        for (const cookie of cookies) {
+            const [name, value] = cookie.trim().split('=');
+            if (name === 'userId') {
+                userId = value;
+                break;
+            }
+        }
+    }
+    // const userId = "dw3y14npwpk2rzdci21kw4";
+    // console.log(`获取到的userId = ${userId}`);
+    if (!userId) {
+        userId = generateUserId();
+        socket.emit('setUserId', userId); // 通过socket发送给前端
+    }
     socket.userId = userId; // 将用户ID附加到socket对象
     socket.favoriteIdol = null; // 初始喜欢的偶像为空
     try {
