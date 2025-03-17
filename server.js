@@ -211,7 +211,7 @@ io.on('connection', async (socket) => {
     try {
         // 查找用户
         console.log(`查询用户 ${userId}`);
-        const [rows] = await pool.query(`SELECT * FROM fans WHERE userId = '${userId}'`);
+        const [rows] = await pool.query('SELECT * FROM fans WHERE userId = ?', [userId]);
         let fan = rows[0];
         if (!fan) {
             // 创建用户
@@ -219,7 +219,7 @@ io.on('connection', async (socket) => {
                 INSERT INTO fans (userId, username, avatar, device, location, age)
                 VALUES (?, ?, ?, ?, ?, ?)
             `, [userId, '匿名用户', 'images/default_avatar.png', 'Unknown', 'Unknown', null]);
-            console.log(`用户 ${userId} 创建成功！`);
+            // console.log(`用户 ${userId} 创建成功！`);
         }
     } catch (error) {
         console.error('创建用户失败:', error);

@@ -14,15 +14,14 @@
             <div class="avatar-wrapper">
                 <img src="images/default_avatar.png" alt="头像" class="avatar">
             </div>
-            <div class="dropdown-content">
-                <a href="#">用户名：<span id="username"></span></a>
-                <a href="#">邮箱：<span id="email"></span></a>
+            <div class="dropdown-content" id="myDropdown">
+                <p>用户名：<span id="username">John Doe</span></p>
+                <p>邮箱：<span id="email">johndoe@example.com</span></p>
                 <a href="#">修改密码</a>
                 <a href="#" onclick="logout()">登出</a>
             </div>
         </div>
-        <a href="register.html" id="register-link">注册</a>
-        <a href="login.html" id="login-link">登录</a>
+
     </div>
     <!-- 主容器 -->
     <div class="container">
@@ -67,6 +66,50 @@
     </div>
     <script src="https://cdn.socket.io/4.5.1/socket.io.min.js"></script>
     <script src="script.js"></script>
+    <script>
+        // 模拟从后端获取用户信息
+        function getUserInfo() {
+            // 这里可以替换为实际的 API 请求，如使用 fetch 或 XMLHttpRequest
+            return {
+                username: 'Jane Smith',
+                email: 'janesmith@example.com'
+            };
+        }
+
+        // 初始化用户信息
+        function initUserInfo() {
+            const userInfo = getUserInfo();
+            document.getElementById('username').textContent = userInfo.username;
+            document.getElementById('email').textContent = userInfo.email;
+        }
+
+        // 切换下拉菜单的显示和隐藏
+        function toggleDropdown() {
+            document.getElementById("myDropdown").classList.toggle("show");
+        }
+
+        // 登出函数
+        function logout() {
+            alert('你已登出！');
+            // 这里可以添加实际的登出逻辑，如清除会话等
+        }
+
+        // 点击页面其他地方时关闭下拉菜单
+        window.onclick = function (event) {
+            if (!event.target.matches('.avatar')) {
+                var dropdowns = document.getElementsByClassName("dropdown-content");
+                for (var i = 0; i < dropdowns.length; i++) {
+                    var openDropdown = dropdowns[i];
+                    if (openDropdown.classList.contains('show')) {
+                        openDropdown.classList.remove('show');
+                    }
+                }
+            }
+        }
+
+        // 页面加载时初始化用户信息
+        window.onload = initUserInfo;
+    </script>
 </body>
 
 </html>

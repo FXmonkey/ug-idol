@@ -20,13 +20,7 @@ function setCookie(name, value, days) {
 }
 let currentIdol = null;
 let danmakuList = [];
-// let userId = getCookie('userId'); //  不需要了
-// const userId = "dw3y14npwpk2rzdci21kw4"; //  不能写死
-// if (!userId) {  //不需要了
-//     // userId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-//     // setCookie('userId', userId, 365);
-//     console.log(`当前没有userId`);
-// }
+
 let locationChart, ageChart;
 let locationChartCanvas, ageChartCanvas
 document.addEventListener('DOMContentLoaded', () => {
@@ -44,8 +38,36 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     // 检查登录状态
     checkLoginStatus();
-    document.querySelector('.avatar-wrapper').addEventListener('click', function() {
-        document.querySelector('.dropdown-content').style.display = 'block';
+    // 修改下拉菜单事件监听
+    // 修改下拉菜单事件监听
+    document.addEventListener('DOMContentLoaded', () => {
+        const dropdown = document.querySelector('.dropdown');
+        const avatarWrapper = document.querySelector('.avatar-wrapper');
+        const dropdownContent = document.querySelector('.dropdown-content');
+    
+        // 调整鼠标移动逻辑
+        let isHovering = false;
+        
+        [avatarWrapper, dropdownContent].forEach(element => {
+            element.addEventListener('mouseenter', () => {
+                dropdownContent.style.display = 'block';
+                isHovering = true;
+            });
+            
+            element.addEventListener('mouseleave', (e) => {
+                // 延迟执行以检测是否移动到关联元素
+                setTimeout(() => {
+                    if (!isHovering) {
+                        dropdownContent.style.display = 'none';
+                    }
+                }, 50);
+            });
+        });
+    
+        // 全局检测鼠标状态
+        document.addEventListener('mousemove', (e) => {
+            isHovering = dropdown.contains(e.target) || dropdownContent.contains(e.target);
+        });
     });
 });
 // 监听来自服务器的 setUserId 事件
@@ -55,17 +77,37 @@ document.addEventListener('DOMContentLoaded', () => {
 //     setCookie('userId', userId, 365);
 // });
 // 获取偶像列表
+// 在 fetchIdols 函数中添加默认选择逻辑
 function fetchIdols() {
     fetch('/api/idols')
         .then(response => response.json())
         .then(data => {
             idols = data;
             renderIdolList();
+            // 始终默认选择第一个偶像
             if (idols.length > 0) {
                 selectIdol(idols[0]);
             }
         })
         .catch(error => console.error('获取偶像列表失败:', error));
+}
+
+// 修改弹幕发送函数
+function sendDanmaku() {
+    const input = document.getElementById('danmaku-input');
+    const text = input.value.trim();
+    if (text) {
+        // 确保始终有当前选择的偶像
+        if (!currentIdol && idols.length > 0) {
+            currentIdol = idols[0];
+        }
+        
+        socket.emit('send-danmaku', {
+            text: text,
+            idolId: currentIdol ? currentIdol.id : null
+        });
+        input.value = '';
+    }
 }
 // 创建图表
 function createChart(canvas, type, data, options) {
@@ -76,6 +118,7 @@ function createChart(canvas, type, data, options) {
     });
 }
 // 渲染偶像列表
+// 在 renderIdolList 中更新点击处理
 function renderIdolList() {
     const listContainer = document.getElementById('idol-list-container');
     listContainer.innerHTML = '';
@@ -83,9 +126,20 @@ function renderIdolList() {
         const item = document.createElement('div');
         item.className = 'idol-item';
         item.textContent = idol.name;
-        item.onclick = () => selectIdol(idol);
+        // 添加点击后选中样式
+        item.onclick = () => {
+            selectIdol(idol);
+            // 移除所有选中样式
+            document.querySelectorAll('.idol-item').forEach(i => i.classList.remove('selected'));
+            item.classList.add('selected');
+        }
         listContainer.appendChild(item);
     });
+    
+    // 默认选中第一个
+    if (idols.length > 0) {
+        listContainer.firstChild?.classList.add('selected');
+    }
 }
 // 选中偶像
 function selectIdol(idol) {
