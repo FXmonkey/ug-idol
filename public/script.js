@@ -92,21 +92,20 @@ function fetchIdols() {
         .catch(error => console.error('获取偶像列表失败:', error));
 }
 
+let danmakuCache = {};
+let currentDisplayedIdol = null;
 // 修改弹幕发送函数
 function sendDanmaku() {
     const input = document.getElementById('danmaku-input');
     const text = input.value.trim();
-    if (text) {
-        // 确保始终有当前选择的偶像
-        if (!currentIdol && idols.length > 0) {
-            currentIdol = idols[0];
-        }
-        
+    if (text && currentIdol) { // 确保必须选择偶像
         socket.emit('send-danmaku', {
             text: text,
-            idolId: currentIdol ? currentIdol.id : null
+            idolId: currentIdol.id
         });
         input.value = '';
+    } else {
+        alert('请先选择偶像');
     }
 }
 // 创建图表
@@ -142,11 +141,56 @@ function renderIdolList() {
     }
 }
 // 选中偶像
+// 修改偶像选择逻辑（约145行）
 function selectIdol(idol) {
     currentIdol = idol;
+    currentDisplayedIdol = idol.id;
     updateIdolInfo();
     fetchFanProfile(idol.id);
-    renderDanmaku();
+    
+    // 切换时先清空容器
+    const container = document.getElementById('danmaku-container');
+    container.innerHTML = '';
+    danmakuCache[idol.id] = []; // 清空当前偶像的缓存
+    
+    // 优先显示缓存数据
+    // if (danmakuCache[idol.id]) {
+    //     danmakuCache[idol.id].forEach(appendSingleDanmaku);
+    // }
+    
+    // 从服务器获取历史记录
+    fetch(`/api/danmaku/${idol.id}`)
+        .then(response => response.json())
+        .then(newDanmaku => {
+            danmakuCache[idol.id] = newDanmaku; // 直接替换而不是合并
+            if (currentDisplayedIdol === idol.id) {
+                container.innerHTML = '';
+                danmakuCache[idol.id].forEach(appendSingleDanmaku);
+            }
+        });
+}
+
+// 修改弹幕渲染逻辑（约 283 行）
+function renderDanmaku(list = []) {
+    console.log("渲染弹幕")
+    const container = document.getElementById('danmaku-container');
+    container.innerHTML = '';
+    list.forEach(item => {
+        const danmaku = document.createElement('div');
+        danmaku.className = 'danmaku';
+        danmaku.textContent = `${item.id}: ${item.text}`;
+        container.appendChild(danmaku);
+        console.log(item.text);
+    });
+}
+
+// 在收到实时弹幕时更新（约 265 行）
+function addDanmaku(data) {
+    if (currentIdol && data.idolId === currentIdol.id) {
+        console.log("收到实时弹幕时更新", data.idolId, currentIdol.id)
+        const danmakuList = [data, ...danmakuList]; // 保持历史记录
+        renderDanmaku(danmakuList);
+    }
 }
 // 更新偶像详细信息
 function updateIdolInfo() {
@@ -249,18 +293,7 @@ function renderFanProfile(profile) {
     });
     rankingListDiv.appendChild(rankingList);
 }
-// 发送弹幕
-function sendDanmaku() {
-    const input = document.getElementById('danmaku-input');
-    const text = input.value.trim();
-    if (text) {
-        socket.emit('send-danmaku', {
-            text: text,
-            idolId: currentIdol ? currentIdol.id : null
-        });
-        input.value = '';
-    }
-}
+
 // 添加弹幕
 function addDanmaku(data) {
     const {
@@ -276,9 +309,46 @@ function addDanmaku(data) {
 }
 // 监听新弹幕
 socket.on('new-danmaku', (data) => {
-    danmakuList.push(data);
-    renderDanmaku();
+    // 按偶像ID缓存弹幕
+    if (!danmakuCache[data.idolId]) {
+        danmakuCache[data.idolId] = [];
+    }
+    danmakuCache[data.idolId].push(data);
+    
+    // 只渲染当前显示的弹幕
+    if (currentIdol && data.idolId === currentIdol.id) {
+        appendSingleDanmaku(data);
+    }
 });
+let danmakuSpeed = 6; // 初始速度 8 秒
+// 修改弹幕追加方法
+function appendSingleDanmaku(data) {
+    const container = document.getElementById('danmaku-container');
+    const danmaku = document.createElement('div');
+    danmaku.className = 'danmaku';
+    danmaku.textContent = data.text;
+    
+    // 随机行位置
+    const lineHeight = 30;
+    const randomLine = Math.floor(Math.random() * 8) * lineHeight;
+    danmaku.style.top = `${10 + randomLine}px`;
+    
+    // 设置动画速度变量（基础速度+随机偏移）
+    const baseSpeed = danmakuSpeed * 1000; // 转成毫秒
+    const randomOffset = Math.random() * 2000; // 2秒内的随机偏移
+    danmaku.style.setProperty('--speed', `${baseSpeed + randomOffset}ms`);
+    
+    // 自动移除旧弹幕（当超过100条时）
+    if (container.children.length > 100) {
+        container.removeChild(container.children[0]);
+    }
+    
+    container.appendChild(danmaku);
+}
+    
+//     // 自动滚动到底部（保留垂直滚动）
+//     container.scrollTop = container.scrollHeight;
+// }
 
 function renderDanmaku() {
     const danmakuContainer = document.getElementById('danmaku-container');
@@ -453,6 +523,15 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('password-error').textContent = '';
     };
 
+    // 页面加载时自动滚动到底部
+    // const container = document.getElementById('danmaku-container');
+    // container.scrollTop = container.scrollHeight;
+    
+    // 存储当前选择的偶像到sessionStorage
+    if (currentIdol) {
+        sessionStorage.setItem('lastIdolId', currentIdol.id);
+    }
+
     // 绑定关闭事件
     modal.querySelector('.modal-overlay').addEventListener('click', closeModal);
     modal.querySelector('.close-btn').addEventListener('click', closeModal);
@@ -501,4 +580,13 @@ document.addEventListener('DOMContentLoaded', () => {
             errorEl.textContent = '❌ ' + (err.error || '修改失败');
         });
     });
+});
+
+// 新增页面恢复逻辑
+window.addEventListener('load', () => {
+    const lastIdolId = sessionStorage.getItem('lastIdolId');
+    if (lastIdolId && idols.length) {
+        const targetIdol = idols.find(i => i.id == lastIdolId);
+        if (targetIdol) selectIdol(targetIdol);
+    }
 });

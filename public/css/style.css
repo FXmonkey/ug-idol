@@ -83,11 +83,44 @@ body {
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
+/* 弹幕容器 */
+#danmaku-container {
+    height: 300px;
+    position: relative; /* 改为相对定位 */
+    padding: 10px;
+    background: #f5f5f5;
+    border-radius: 8px;
+    overflow-y: hidden;  /* 确保垂直滚动关闭 */
+    overflow-x: hidden;  /* 新增水平滚动关闭 */
+    -ms-overflow-style: none;  /* IE和Edge */
+    scrollbar-width: none;  /* Firefox */
+}
+
+/* 针对webkit浏览器隐藏滚动条 */
+#danmaku-container::-webkit-scrollbar {
+    display: none;
+}
+
+/* 修改弹幕动画 */
 .danmaku {
+    position: absolute;
+    right: -50%;  /* 初始位置在容器右侧外 */
     white-space: nowrap;
-    animation: scroll 10s linear infinite;
-    color: #e91e63;
-    font-size: 16px;
+    padding: 4px 12px;
+    background: #fff;
+    border-radius: 15px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    animation: danmakuSlide linear infinite;
+    animation-duration: var(--speed); /* 通过变量控制速度 */
+}
+
+@keyframes danmakuSlide {
+    0% {
+        transform: translateX(0);
+    }
+    100% {
+        transform: translateX(calc(-50% - 100vw)); /* 移动到屏幕左侧外 */
+    }
 }
 
 @keyframes scroll {

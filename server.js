@@ -21,6 +21,7 @@ const dbConfig = {
     database: 'idol_msg'
 };
 let pool;
+// 在 initializeDatabase 中添加弹幕表
 async function initializeDatabase() {
     try {
         pool = mysql.createPool(dbConfig);
@@ -37,6 +38,19 @@ async function initializeDatabase() {
             )
         `);
         console.log('Users table created (if not exist)');
+        
+        // 创建弹幕表（新增）
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS danmaku (
+                id INT PRIMARY KEY AUTO_INCREMENT,
+                text VARCHAR(255) NOT NULL,
+                idol_id INT NOT NULL,
+                user_id VARCHAR(255) NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_idol_id (idol_id)
+            )
+        `);
+        console.log('Danmaku table created');
     } catch (error) {
         console.error('Database initialization error:', error);
     }
@@ -225,21 +239,23 @@ io.on('connection', async (socket) => {
         console.error('创建用户失败:', error);
     }
     // 接收弹幕
+    // 修改弹幕处理逻辑（server.js 约 239 行）
     socket.on('send-danmaku', async (data) => {
-        const {
-            text,
-            idolId
-        } = data; // 接收偶像ID
-        socket.favoriteIdol = idolId; // 更新喜欢的偶像
+        const { text, idolId } = data;
         try {
             // 更新粉丝弹幕数量和喜欢的偶像
+            await pool.query(
+                'INSERT INTO danmaku (text, idol_id, user_id) VALUES (?, ?, ?)',
+                [text, idolId, userId]
+            );
             await pool.query('UPDATE fans SET danmakuCount = danmakuCount + 1, favoriteIdol = ? WHERE userId = ?', [idolId, userId]);
             // 广播给所有人,带上idolId
-            io.emit('new-danmaku', {
-                text: text,
-                userId: socket.userId,
-                idolId: idolId
-            });
+            io.emit('new-danmaku', { text, userId, idolId });
+            // io.emit('new-danmaku', {
+            //     text: text,
+            //     userId: socket.userId,
+            //     idolId: idolId
+            // });
         } catch (error) {
             console.error('发送弹幕失败:', error);
         }
@@ -281,6 +297,22 @@ app.get('/api/idols', async (req, res) => {
         });
     }
 });
+
+// 新增获取历史弹幕的API（添加到 server.js 路由部分）
+app.get('/api/danmaku/:idolId', async (req, res) => {
+    const idolId = req.params.idolId;
+    try {
+        const [danmaku] = await pool.query(
+            'SELECT text, user_id, created_at FROM danmaku WHERE idol_id = ? ORDER BY created_at DESC LIMIT 100',
+            [idolId]
+        );
+        res.json(danmaku);
+    } catch (error) {
+        console.error('获取弹幕失败:', error);
+        res.status(500).json({ error: '获取弹幕失败' });
+    }
+});
+
 // 获取粉丝画像 API
 app.get('/api/idol/:idolId/fans/profile', async (req, res) => {
     const idolId = req.params.idolId;
