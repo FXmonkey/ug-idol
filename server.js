@@ -4,13 +4,14 @@ const socketIo = require('socket.io');
 const mysql = require('mysql2/promise'); // 引入 MySQL2
 // const bcrypt = require('bcrypt'); // 引入 bcrypt  先注释掉
 const app = express();
-const session = require('express-session'); // 引入 express-session
 const server = http.createServer(app);
+const cors = require('cors');
+const session = require('express-session');
 const io = socketIo(server, {
     cors: {
-        origin: "*", // 允许所有来源，生产环境请修改为你的域名
+        origin: ["http://localhost:3000", "http://127.0.0.1:3000"],
         methods: ["GET", "POST"],
-        credentials: true // 允许发送 cookie
+        credentials: true
     }
 });
 // MySQL 连接配置
@@ -31,10 +32,17 @@ async function initializeDatabase() {
             CREATE TABLE IF NOT EXISTS users (
                 id INT PRIMARY KEY AUTO_INCREMENT,
                 username VARCHAR(255) UNIQUE NOT NULL,
-                password VARCHAR(255) NOT NULL,
                 email VARCHAR(255) UNIQUE,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            )
+        `);
+        // 创建密码表
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS userpasswd (
+                user_id INT PRIMARY KEY,
+                password VARCHAR(255) NOT NULL,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             )
         `);
         console.log('Users table created (if not exist)');
@@ -51,6 +59,21 @@ async function initializeDatabase() {
             )
         `);
         console.log('Danmaku table created');
+
+        // 修改 fans 表结构
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS fans (
+                fans_id INT PRIMARY KEY AUTO_INCREMENT,
+                user_id INT NOT NULL,
+                idol_id INT NOT NULL,
+                area VARCHAR(255) DEFAULT 'UnKnown',
+                age INT DEFAULT 18,
+                create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id),
+                FOREIGN KEY (idol_id) REFERENCES idols(id)
+            )
+        `);
+        console.log('Fans table created (if not exist)');
     } catch (error) {
         console.error('Database initialization error:', error);
     }
@@ -59,18 +82,19 @@ async function initializeDatabase() {
 (async () => {
     await initializeDatabase();
 })();
-// 配置 session
 app.use(session({
-    secret: 'your secret key', // 用于加密 session ID 的密钥
+    secret: 'your-secret-key',
     resave: false,
-    saveUninitialized: false,
-    cookie: {
-        secure: false, // 如果使用 HTTPS，则设置为 true
-        maxAge: 60 * 60 * 1000 // Session 过期时间，单位毫秒
-    }
+    saveUninitialized: true,
+    cookie: { secure: false } // 开发环境用false，生产环境需要https
 }));
 // 配置跨域资源共享
 app.use((req, res, next) => {
+    const allowedOrigins = ['http://localhost:3000', 'http://127.0.0.1:3000'];
+    const origin = req.headers.origin;
+    if (allowedOrigins.includes(origin)) {
+        res.header('Access-Control-Allow-Origin', origin); // 动态设置来源
+    }
     res.header('Access-Control-Allow-Origin', 'http://localhost:3000'); // 允许的来源
     res.header('Access-Control-Allow-Credentials', 'true'); // 允许携带 cookie
     res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
@@ -82,88 +106,75 @@ app.use(express.json());
 app.use('/css', express.static(__dirname + '/public/css'));
 app.use('/images', express.static(__dirname + '/public/images'));
 app.use('/script.js', express.static(__dirname + '/public/script.js'));
-// 检查登录状态的中间件
-const checkLoginMiddleware = (req, res, next) => {
-    if (req.path.startsWith('/login.html') || req.path.startsWith('/register.html') || req.path.startsWith('/api/')) {
-        // 如果请求的是登录页面或注册页面或api请求，则跳过重定向
-        next();
-    } else if (req.session.userId) {
-        // 用户已登录，继续访问
-        next();
-    } else {
-        // 用户未登录，重定向到登录页面
-        res.redirect('/login.html');
-    }
-};
+app.use(cors({
+    origin: ["http://localhost:3000", "http://127.0.0.1:3000"],
+    methods: ["GET", "POST", "PUT"],
+    credentials: true
+}));
 // 应用于需要登录才能访问的路由
-app.use(checkLoginMiddleware);
 app.use(express.static(__dirname + '/public'));
 // 注册 API
 app.post('/api/register', async (req, res) => {
-    const {
-        username,
-        password
-    } = req.body;
+    const connection = await pool.getConnection();
     try {
-        // 检查用户名是否已存在
-        const [rows] = await pool.query('SELECT * FROM users WHERE username = ?', [username]);
-        if (rows.length > 0) {
-            return res.status(400).json({
-                error: '用户名已存在'
-            });
-        }
-        // 加密密码 先注释掉
-        // const hashedPassword = await bcrypt.hash(password, 10);
-        // 创建用户
-        await pool.query('INSERT INTO users (username, password) VALUES (?, ?)', [username, password]);
-        console.log(`用户 ${username} 注册成功`);
-        res.json({
-            message: '注册成功'
-        });
+        await connection.beginTransaction();
+        
+        const { username, password } = req.body;
+        
+        // 创建用户（使用事务保证原子性）
+        const [userResult] = await connection.query(
+            'INSERT INTO users (username) VALUES (?)',
+            [username]
+        );
+        
+        // 插入密码
+        await connection.query(
+            'INSERT INTO userpasswd (user_id, password) VALUES (?, ?)',
+            [userResult.insertId, password] // 后续需要替换为加密后的密码
+        );
+        
+        await connection.commit();
+        res.json({ message: '注册成功' });
     } catch (error) {
-        console.error('注册失败:', error);
-        res.status(500).json({
-            error: '注册失败'
-        });
+        await connection.rollback();
+        if (error.code === 'ER_DUP_ENTRY') {
+            res.status(400).json({ error: '用户名已存在' });
+        } else {
+            res.status(500).json({ error: '注册失败' });
+        }
+    } finally {
+        connection.release();
     }
 });
 // 登录 API
 app.post('/api/login', async (req, res) => {
-    const {
-        username,
-        password
-    } = req.body;
+    const { username, password } = req.body;
     try {
-        // 查找用户
-        const [rows] = await pool.query('SELECT * FROM users WHERE username = ?', [username]);
-        const user = rows[0];
-        if (!user) {
-            return res.status(400).json({
-                error: '用户名或密码错误'
+        const [rows] = await pool.query(`
+            SELECT u.id, up.password 
+            FROM users u
+            JOIN userpasswd up ON u.id = up.user_id
+            WHERE u.username = ?`, 
+            [username]
+        );
+        
+        if (!rows[0] || rows[0].password !== password) {
+            return res.status(401).json({ 
+                error: '用户名或密码错误',
+                userId: null  // 明确返回null
             });
         }
-        // 验证密码 先注释掉
-        // const passwordMatch = await bcrypt.compare(password, user.password);
-        // if (!passwordMatch) {
-        //     return res.status(400).json({
-        //         error: '用户名或密码错误'
-        //     });
-        // }
-        if (password !== user.password) {
-            return res.status(400).json({
-                error: '用户名或密码错误'
-            });
-        }
-        // 设置 session
-        req.session.userId = user.id;
-        console.log(`用户 ${username} 登录成功`);
-        res.json({
-            message: '登录成功'
+        
+        res.json({ 
+            message: '登录成功',
+            userId: rows[0].id.toString(),  // 确保返回字符串
+            redirectUrl: '/'
         });
     } catch (error) {
         console.error('登录失败:', error);
-        res.status(500).json({
-            error: '登录失败'
+        res.status(500).json({ 
+            error: '登录失败',
+            userId: null  // 明确返回null
         });
     }
 });
@@ -194,97 +205,45 @@ app.get('/api/checkLogin', (req, res) => {
         });
     }
 });
-// 获取用户唯一ID，建议用更可靠的方式生成（例如：根据session）
-function generateUserId() {
-    return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-}
-// 处理Socket连接
-io.on('connection', async (socket) => {
-    console.log('用户连接成功！');
-    // 为新用户生成ID
-    // const userId = generateUserId();
-    let userId;
-    if (socket.handshake.headers.cookie) {
-        const cookies = socket.handshake.headers.cookie.split(';');
-        for (const cookie of cookies) {
-            const [name, value] = cookie.trim().split('=');
-            if (name === 'userId') {
-                userId = value;
-                break;
-            }
-        }
-    }
-    // const userId = "dw3y14npwpk2rzdci21kw4";
-    // console.log(`获取到的userId = ${userId}`);
-    if (!userId) {
-        userId = generateUserId();
-        socket.emit('setUserId', userId); // 通过socket发送给前端
-    }
-    socket.userId = userId; // 将用户ID附加到socket对象
-    socket.favoriteIdol = null; // 初始喜欢的偶像为空
-    try {
-        // 查找用户
-        console.log(`查询用户 ${userId}`);
-        const [rows] = await pool.query('SELECT * FROM fans WHERE userId = ?', [userId]);
-        let fan = rows[0];
-        if (!fan) {
-            // 创建用户
-            await pool.query(`
-                INSERT INTO fans (userId, username, avatar, device, location, age)
-                VALUES (?, ?, ?, ?, ?, ?)
-            `, [userId, '匿名用户', 'images/default_avatar.png', 'Unknown', 'Unknown', null]);
-            // console.log(`用户 ${userId} 创建成功！`);
-        }
-    } catch (error) {
-        console.error('创建用户失败:', error);
-    }
-    // 接收弹幕
-    // 修改弹幕处理逻辑（server.js 约 239 行）
+
+io.on('connection', (socket) => {
+    // 移除session验证
+    console.log('新用户连接');
+
     socket.on('send-danmaku', async (data) => {
-        const { text, idolId } = data;
         try {
-            // 更新粉丝弹幕数量和喜欢的偶像
             await pool.query(
                 'INSERT INTO danmaku (text, idol_id, user_id) VALUES (?, ?, ?)',
-                [text, idolId, userId]
+                [data.text, data.idolId, data.userId] // 前端直接传递userId
             );
-            await pool.query('UPDATE fans SET danmakuCount = danmakuCount + 1, favoriteIdol = ? WHERE userId = ?', [idolId, userId]);
-            // 广播给所有人,带上idolId
-            io.emit('new-danmaku', { text, userId, idolId });
-            // io.emit('new-danmaku', {
-            //     text: text,
-            //     userId: socket.userId,
-            //     idolId: idolId
-            // });
+            
+            io.emit('new-danmaku', { 
+                ...data,
+                createdAt: new Date().toISOString()
+            });
         } catch (error) {
-            console.error('发送弹幕失败:', error);
+            console.error('弹幕存储失败:', error);
         }
     });
-    // 更新用户信息
     socket.on('update-user-info', async (userInfo) => {
         try {
-            const {
-                username,
-                avatar,
-                device,
-                location,
-                age
-            } = userInfo;
-            await pool.query(`
-                UPDATE fans
-                SET username = ?, avatar = ?, device = ?, location = ?, age = ?
-                WHERE userId = ?
-            `, [username, avatar, device, location, age, userId]);
+            const { username, email } = userInfo;
+            await pool.query(
+                `UPDATE users SET username = ?, email = ? WHERE id = ?`,
+                [username, email, userId]
+            );
             console.log(`用户 ${userId} 信息更新成功！`);
         } catch (error) {
             console.error('更新用户信息失败:', error);
         }
     });
-    // 断开连接
+    
+    // 移动断开连接事件到这里
     socket.on('disconnect', () => {
         console.log('用户断开连接');
     });
 });
+
 // 获取偶像列表 API
 app.get('/api/idols', async (req, res) => {
     try {
@@ -317,8 +276,9 @@ app.get('/api/danmaku/:idolId', async (req, res) => {
 app.get('/api/idol/:idolId/fans/profile', async (req, res) => {
     const idolId = req.params.idolId;
     try {
-        const [fans] = await pool.query('SELECT * FROM fans WHERE favoriteIdol = ?', [idolId]);
-        // 统计地域分布
+        const [fans] = await pool.query(`
+            SELECT location, age FROM fans 
+            WHERE idol_id = ?`, [idolId]);        // 统计地域分布
         const locationCounts = {};
         fans.forEach(fan => {
             const location = fan.location || '未知';
@@ -330,12 +290,10 @@ app.get('/api/idol/:idolId/fans/profile', async (req, res) => {
             const age = fan.age || '未知';
             ageCounts[age] = (ageCounts[age] || 0) + 1;
         });
-        // 获取弹幕数量排名
-        const ranking = [...fans].sort((a, b) => b.danmakuCount - a.danmakuCount).slice(0, 10);
         res.json({
-            locationCounts: locationCounts,
-            ageCounts: ageCounts,
-            ranking: ranking
+            locationCounts,
+            ageCounts,
+            ranking: [] // 暂时返回空数组
         });
     } catch (error) {
         console.error('获取粉丝画像失败:', error);
@@ -351,21 +309,43 @@ server.listen(PORT, () => {
 });
 // 新增修改密码API
 app.put('/api/change-password', async (req, res) => {
-    const { oldPassword, newPassword } = req.body;
-    const userId = req.session.userId;
+    const { oldPassword, newPassword, userId } = req.body;
 
     try {
-        const [rows] = await pool.query('SELECT * FROM users WHERE id = ?', [userId]);
-        const user = rows[0];
-        
-        if (!user || user.password !== oldPassword) {
+        // 联合查询密码表
+        const [rows] = await pool.query(`
+            SELECT up.password 
+            FROM userpasswd up
+            WHERE up.user_id = ?
+        `, [userId]);
+
+        if (!rows[0] || rows[0].password !== oldPassword) {
             return res.status(400).json({ error: '旧密码不正确' });
         }
 
-        await pool.query('UPDATE users SET password = ? WHERE id = ?', [newPassword, userId]);
+        await pool.query(`
+            UPDATE userpasswd 
+            SET password = ? 
+            WHERE user_id = ?
+        `, [newPassword, userId]);
+        
         res.json({ message: '密码修改成功' });
     } catch (error) {
         console.error('密码修改失败:', error);
         res.status(500).json({ error: '密码修改失败' });
+    }
+});
+
+app.get('/api/users/:id', async (req, res) => {
+    try {
+        const [rows] = await pool.query(`
+            SELECT id, username, email, created_at 
+            FROM users 
+            WHERE id = ?
+        `, [req.params.id]);
+        
+        res.json(rows[0] || {});
+    } catch (error) {
+        res.status(500).json({ error: '获取用户信息失败' });
     }
 });

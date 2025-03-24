@@ -4,7 +4,8 @@
 <head>
     <title>地下偶像应援站</title>
     <link rel="stylesheet" href="css/style.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- 替换失效的CDN链接 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
 </head>
 
 <body>
@@ -64,7 +65,7 @@
     <!-- 输入框 -->
     <div class="input-box">
         <input type="text" id="danmaku-input" placeholder="发送弹幕">
-        <input type="number" id="age-input" placeholder="输入你的年龄">
+        <!-- <input type="number" id="age-input" placeholder="输入你的年龄"> -->
         <button onclick="sendDanmaku()">发送</button>
     </div>
     <script src="https://cdn.socket.io/4.5.1/socket.io.min.js"></script>

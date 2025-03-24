@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<!-- 在head标签内添加socket.io引用 -->
+<head>
+    <title>添加偶像</title>
+    <script src="/socket.io/socket.io.js"></script> <!-- 新增 -->
+    <link rel="stylesheet" href="css/style.css">
+    <script src="script.js"></script> <!-- 确保在最后加载 -->
+</head>
+<body>
+    <div class="container">
+        <h1>共建偶像档案</h1>
+        <div class="form-container">
+            <form id="idol-form">
+                <div class="form-group">
+                    <label>偶像名字：</label>
+                    <input type="text" id="idol-name" required>
+                </div>
+                <div class="form-group">
+                    <label>年龄：</label>
+                    <input type="number" id="idol-age">
+                </div>
+                <div class="form-group">
+                    <label>所在地：</label>
+                    <input type="text" id="idol-location">
+                </div>
+                <div class="form-group">
+                    <label>图片URL：</label>
+                    <input type="url" id="idol-image">
+                </div>
+                <div class="form-group">
+                    <label>描述：</label>
+                    <textarea id="idol-description" rows="3"></textarea>
+                </div>
+                <button type="submit" class="cute-button">提交</button>
+            </form>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>

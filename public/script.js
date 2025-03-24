@@ -1,4 +1,18 @@
-const socket = io('http://localhost:3000');
+const socket = io('http://localhost:3000', {
+    transports: ['websocket'] // 强制使用 websocket
+});
+// 增加连接状态监听
+socket.on('connect', () => {
+    console.log('已连接到服务器');
+});
+
+socket.on('connect_error', (error) => {
+    console.error('连接失败:', error);
+});
+
+socket.on('authentication', (data) => {
+    console.log('认证状态:', data.status);
+});
 let idols = [];
 
 // 获取 cookie
@@ -24,20 +38,26 @@ let danmakuList = [];
 let locationChart, ageChart;
 let locationChartCanvas, ageChartCanvas
 document.addEventListener('DOMContentLoaded', () => {
+    // 访问控制
+    const isAuthPage = window.location.pathname.includes('login.html') || 
+                      window.location.pathname.includes('register.html');
+    // 只在主页面初始化图表
+    if (!isAuthPage) {
+        // 初始化图表
+        locationChartCanvas = document.getElementById('location-chart')?.getContext('2d');
+        ageChartCanvas = document.getElementById('age-chart')?.getContext('2d');
+    }
+    if (!localStorage.getItem('currentUserId') && !isAuthPage) {
+        window.location.href = '/login.html';
+        return;
+    }
     // 获取偶像列表
     fetchIdols();
     // 初始化图表
     locationChartCanvas = document.getElementById('location-chart').getContext('2d');
     ageChartCanvas = document.getElementById('age-chart').getContext('2d');
-    // 年龄输入框事件
-    document.getElementById('age-input').addEventListener('change', function() {
-        const userInfo = {
-            age: this.value
-        };
-        socket.emit('update-user-info', userInfo);
-    });
     // 检查登录状态
-    checkLoginStatus();
+    // checkLoginStatus();
     // 修改下拉菜单事件监听
     document.addEventListener('DOMContentLoaded', () => {
         // 密码修改模态框
@@ -60,22 +80,27 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 });
-// 新增密码修改函数
-function submitPasswordChange() {
-    const oldPwd = document.getElementById('old-pwd').value;
-    const newPwd = document.getElementById('new-pwd').value;
-
+function submitPasswordChange(userId, oldPwd, newPwd, errorEl, closeCallback) {
     fetch('/api/change-password', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ oldPassword: oldPwd, newPassword: newPwd })
+        body: JSON.stringify({ 
+            oldPassword: oldPwd, 
+            newPassword: newPwd,
+            userId: userId  // 新增用户ID参数
+        })
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) throw response;
+        return response.json();
+    })
     .then(data => {
-        alert(data.message);
-        document.querySelector('.password-modal').style.display = 'none';
+        alert('✅ ' + data.message)
+        closeCallback();
     })
-    .catch(error => console.error('修改失败:', error));
+    .catch(async (error) => {
+        errorEl.textContent = '❌ ' + (error || '修改失败');
+    });
 }
 // 在 fetchIdols 函数中添加默认选择逻辑
 function fetchIdols() {
@@ -94,18 +119,48 @@ function fetchIdols() {
 
 let danmakuCache = {};
 let currentDisplayedIdol = null;
-// 修改弹幕发送函数
+
+function handleLoginSuccess(userId) {
+    localStorage.setItem('currentUserId', userId);
+    checkLoginStatus();
+    // Socket连接改为简单模式
+    socket = io('http://localhost:3000', {
+        transports: ['websocket']
+    });
+}
+
+// 发送弹幕时携带本地存储的userId
 function sendDanmaku() {
-    const input = document.getElementById('danmaku-input');
-    const text = input.value.trim();
-    if (text && currentIdol) { // 确保必须选择偶像
+    const input = document.getElementById('danmaku-input'); // 新增获取输入框
+    const text = input.value.trim();  // 新增
+    const userId = localStorage.getItem('currentUserId');
+    console.log(userId, '  发送弹幕:', text);  // 新增
+    if (!text) {
+        alert('请输入弹幕内容');
+        return;
+    }
+
+    if (!userId) {
+        alert('请先登录');
+        window.location.href = '/login.html';  // 未登录时跳转
+        return;
+    }
+
+    if (!currentIdol) {
+        alert('请先选择偶像');
+        return;
+    }
+
+    try {
         socket.emit('send-danmaku', {
             text: text,
-            idolId: currentIdol.id
+            idolId: currentIdol.id,
+            userId: userId
         });
         input.value = '';
-    } else {
-        alert('请先选择偶像');
+    } catch (error) {
+        console.error('弹幕发送失败:', error);
+        alert('弹幕发送失败，请检查网络连接');
     }
 }
 // 创建图表
@@ -154,9 +209,9 @@ function selectIdol(idol) {
     danmakuCache[idol.id] = []; // 清空当前偶像的缓存
     
     // 优先显示缓存数据
-    // if (danmakuCache[idol.id]) {
-    //     danmakuCache[idol.id].forEach(appendSingleDanmaku);
-    // }
+    if (danmakuCache[idol.id]) {
+        danmakuCache[idol.id].forEach(appendSingleDanmaku);
+    }
     
     // 从服务器获取历史记录
     fetch(`/api/danmaku/${idol.id}`)
@@ -170,28 +225,6 @@ function selectIdol(idol) {
         });
 }
 
-// 修改弹幕渲染逻辑（约 283 行）
-function renderDanmaku(list = []) {
-    console.log("渲染弹幕")
-    const container = document.getElementById('danmaku-container');
-    container.innerHTML = '';
-    list.forEach(item => {
-        const danmaku = document.createElement('div');
-        danmaku.className = 'danmaku';
-        danmaku.textContent = `${item.id}: ${item.text}`;
-        container.appendChild(danmaku);
-        console.log(item.text);
-    });
-}
-
-// 在收到实时弹幕时更新（约 265 行）
-function addDanmaku(data) {
-    if (currentIdol && data.idolId === currentIdol.id) {
-        console.log("收到实时弹幕时更新", data.idolId, currentIdol.id)
-        const danmakuList = [data, ...danmakuList]; // 保持历史记录
-        renderDanmaku(danmakuList);
-    }
-}
 // 更新偶像详细信息
 function updateIdolInfo() {
     const description = document.getElementById('idol-description');
@@ -294,22 +327,10 @@ function renderFanProfile(profile) {
     rankingListDiv.appendChild(rankingList);
 }
 
-// 添加弹幕
-function addDanmaku(data) {
-    const {
-        text,
-        idolId
-    } = data;
-    if (!currentIdol || idolId === currentIdol.id) {
-        const danmaku = document.createElement('div');
-        danmaku.className = 'danmaku';
-        danmaku.textContent = text;
-        document.getElementById('danmaku-container').appendChild(danmaku);
-    }
-}
 // 监听新弹幕
 socket.on('new-danmaku', (data) => {
     // 按偶像ID缓存弹幕
+    console.log("按偶像ID缓存弹幕", data, currentIdol.id)
     if (!danmakuCache[data.idolId]) {
         danmakuCache[data.idolId] = [];
     }
@@ -317,11 +338,12 @@ socket.on('new-danmaku', (data) => {
     
     // 只渲染当前显示的弹幕
     if (currentIdol && data.idolId === currentIdol.id) {
+        console.log("渲染当前显示的弹幕", data)
         appendSingleDanmaku(data);
     }
 });
-let danmakuSpeed = 6; // 初始速度 8 秒
-// 修改弹幕追加方法
+
+let danmakuSpeed = 6; // 初始速度 6 秒
 function appendSingleDanmaku(data) {
     const container = document.getElementById('danmaku-container');
     const danmaku = document.createElement('div');
@@ -349,23 +371,6 @@ function appendSingleDanmaku(data) {
 //     // 自动滚动到底部（保留垂直滚动）
 //     container.scrollTop = container.scrollHeight;
 // }
-
-function renderDanmaku() {
-    const danmakuContainer = document.getElementById('danmaku-container');
-    danmakuContainer.innerHTML = '';
-    danmakuList.forEach((item) => {
-        const {
-            text,
-            idolId
-        } = item;
-        if (!currentIdol || idolId === currentIdol.id) {
-            const danmaku = document.createElement('div');
-            danmaku.className = 'danmaku';
-            danmaku.textContent = text;
-            danmakuContainer.appendChild(danmaku);
-        }
-    })
-}
 // 注册函数
 function register(username, password) {
     fetch('/api/register', {
@@ -393,76 +398,77 @@ function register(username, password) {
 // 登录函数
 function login(username, password) {
     fetch('/api/login', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                username,
-                password
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.error) {
-                alert(data.error);
-            } else {
-                alert(data.message);
-                // 登录成功后更新页面状态
-                checkLoginStatus();
-                // 登录成功后跳转到主页面
-                window.location.href = '/';
-            }
-        })
-        .catch(error => console.error('登录失败:', error));
-}
-// 修改登出函数（约第300行）
-function logout() {
-    console.log('[Debug] 开始执行登出流程');
-    fetch('/api/logout', {
         method: 'POST',
-        credentials: 'same-origin' // 确保携带cookie
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+            username: username,
+            password: password
+        })
     })
     .then(response => {
-        if (!response.ok) throw new Error('登出失败');
+        if (!response.ok) {
+            // 添加详细的错误日志
+            console.error('登录失败，状态码:', response.status);
+            return response.text().then(text => { throw new Error(text) });
+        }
         return response.json();
     })
     .then(data => {
-        // 强制清除前端会话状态
-        document.cookie = 'connect.sid=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;'; 
-        window.location.href = '/login.html';
+        if (data.userId) {
+            localStorage.setItem('currentUserId', data.userId.toString());
+            checkLoginStatus();
+            window.location.href = data.redirectUrl || '/';
+        } else {
+            alert(data.error || '登录失败');
+        }
     })
     .catch(error => {
-        console.error('Error:', error);
-        // 强制跳转作为保底
-        window.location.href = '/login.html?force=true'; 
+        console.error('登录请求失败:', error);
+        let errorMsg = '';
+        try {
+            let errorObj = JSON.parse(error.message);
+            errorMsg = errorObj.error;
+        } catch (parseError) {
+            console.error('解析 JSON 时出错:', parseError);
+        }
+        alert(errorMsg || '网络连接不稳定，请检查网络后重试',);
     });
 }
+function logout() {
+    localStorage.removeItem('currentUserId');
+    checkLoginStatus();
+    window.location.href = '/login.html';
+}
+
 // 检查登录状态
 function checkLoginStatus() {
-    fetch('/api/checkLogin')
-        .then(response => response.json())
-        .then(data => {
-            const loginStatus = document.getElementById('login-status');
-            const profileLink = document.getElementById('profile-link');
-            const logoutButton = document.getElementById('logout-button');
-            const registerLink = document.getElementById('register-link');
-            const loginLink = document.getElementById('login-link');
-            if (data.isLogin) {
-                loginStatus.textContent = '已登录';
-                profileLink.style.display = 'inline';
-                logoutButton.style.display = 'inline';
-                registerLink.style.display = 'none';
-                loginLink.style.display = 'none';
-            } else {
-                loginStatus.textContent = '未登录';
-                profileLink.style.display = 'none';
-                logoutButton.style.display = 'none';
-                registerLink.style.display = 'inline';
-                loginLink.style.display = 'inline';
-            }
-        })
-        .catch(error => console.error('检查登录状态失败:', error));
+    const userId = localStorage.getItem('currentUserId');
+    const elements = {
+        loginStatus: document.getElementById('login-status'),
+        profileLink: document.getElementById('profile-link'),
+        logoutButton: document.getElementById('logout-button'),
+        registerLink: document.getElementById('register-link'),
+        loginLink: document.getElementById('login-link')
+    };
+
+    // 添加元素存在性检查
+    const updateElement = (element, prop, value) => {
+        if (element) element[prop] = value;
+    };
+
+    if (userId) {
+        updateElement(elements.loginStatus, 'textContent', '已登录');
+        updateElement(elements.profileLink, 'style.display', 'inline');
+        updateElement(elements.logoutButton, 'style.display', 'inline');
+        updateElement(elements.registerLink, 'style.display', 'none');
+        updateElement(elements.loginLink, 'style.display', 'none');
+    } else {
+        updateElement(elements.loginStatus, 'textContent', '未登录');
+        updateElement(elements.profileLink, 'style.display', 'none');
+        updateElement(elements.logoutButton, 'style.display', 'none');
+        updateElement(elements.registerLink, 'style.display', 'inline');
+        updateElement(elements.loginLink, 'style.display', 'inline');
+    }
 }
 
 // 在DOMContentLoaded中添加密码修改弹窗 (HTML+CSS)
@@ -543,6 +549,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const newPwd = document.getElementById('new-pwd').value;
         const confirmPwd = document.getElementById('confirm-pwd').value;
         const errorEl = document.getElementById('password-error');
+        const userId = localStorage.getItem('currentUserId'); // 新增用户ID获取
 
         // 前端验证
         if (!oldPwd || !newPwd || !confirmPwd) {
@@ -558,27 +565,8 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // 提交到后端
-        fetch('/api/change-password', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                oldPassword: oldPwd, 
-                newPassword: newPwd 
-            })
-        })
-        .then(response => {
-            if (!response.ok) throw response;
-            return response.json();
-        })
-        .then(data => {
-            alert('✅ ' + data.message);
-            closeModal();
-        })
-        .catch(async (error) => {
-            const err = await error.json();
-            errorEl.textContent = '❌ ' + (err.error || '修改失败');
-        });
+        // 统一调用修改密码函数
+        submitPasswordChange(userId, oldPwd, newPwd, errorEl, closeModal);
     });
 });
 

@@ -508,3 +508,16 @@ body {
     min-height: 20px;
     margin: 10px 0;
     font-size: 14px;}
+
+
+/* 可爱风格弹窗 */
+.cutie-alert {
+    border-radius: 15px !important;
+    box-shadow: 0 0 15px rgba(255, 121, 166, 0.3) !important;
+    font-family: 'M PLUS Rounded 1c', sans-serif !important;
+}
+
+.swal2-title {
+    color: #ff79a6 !important;
+    font-size: 22px !important;
+}
