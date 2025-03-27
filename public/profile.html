@@ -50,8 +50,8 @@
                             <input type="text" id="idol-group" required>
                         </div>
                         <div class="form-group">
-                            <label for="idol-image">照片URL：</label>
-                            <input type="text" id="idol-image" required>
+                            <label for="idol-photos">照片：</label>
+                            <input type="file" id="idol-photos" name="photos" multiple accept="image/*" required>
                         </div>
                         <div class="form-group">
                             <label for="idol-homepage">个人主页链接：</label>
@@ -142,21 +142,22 @@
         idolForm.onsubmit = async function(e) {
             e.preventDefault();
             
-            const formData = {
-                name: document.getElementById('idol-name').value,
-                gender: document.getElementById('idol-gender').value,
-                group_name: document.getElementById('idol-group').value,
-                image: document.getElementById('idol-image').value,
-                homepage: document.getElementById('idol-homepage').value
-            };
+            const formData = new FormData();
+            formData.append('name', document.getElementById('idol-name').value);
+            formData.append('gender', document.getElementById('idol-gender').value);
+            formData.append('group_name', document.getElementById('idol-group').value);
+            formData.append('homepage', document.getElementById('idol-homepage').value);
+
+            // 添加所有选择的图片文件
+            const photoFiles = document.getElementById('idol-photos').files;
+            for (let i = 0; i < photoFiles.length; i++) {
+                formData.append('photos', photoFiles[i]);
+            }
 
             try {
                 const response = await fetch('/api/idols', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(formData)
+                    body: formData
                 });
 
                 if (response.ok) {

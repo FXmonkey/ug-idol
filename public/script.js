@@ -120,13 +120,21 @@ function fetchIdols() {
 let danmakuCache = {};
 let currentDisplayedIdol = null;
 
+// 处理登录成功的函数
 function handleLoginSuccess(userId) {
-    localStorage.setItem('currentUserId', userId);
-    checkLoginStatus();
-    // Socket连接改为简单模式
-    socket = io('http://localhost:3000', {
-        transports: ['websocket']
-    });
+    // 确保 userId 存在且为字符串类型
+    if (userId) {
+        localStorage.setItem('currentUserId', userId.toString());
+        checkLoginStatus();
+        // 重新初始化 socket 连接
+        if (socket) {
+            socket.disconnect();
+        }
+        socket = io('http://localhost:3000', {
+            transports: ['websocket'],
+            query: { userId: userId.toString() }
+        });
+    }
 }
 
 // 发送弹幕时携带本地存储的userId
@@ -214,15 +222,59 @@ function selectIdol(idol) {
     }
     
     // 从服务器获取历史记录
-    fetch(`/api/danmaku/${idol.id}`)
+    fetchDanmaku(idol.id);
+}
+
+// 获取弹幕数据的函数
+function fetchDanmaku(idolId, startTime = null, endTime = null, keyword = null) {
+    // 构建查询参数
+    let queryParams = new URLSearchParams();
+    if (startTime) queryParams.append('startTime', startTime);
+    if (endTime) queryParams.append('endTime', endTime);
+    if (keyword) queryParams.append('keyword', keyword);
+    
+    // 构建API URL
+    let apiUrl = `/api/danmaku/${idolId}`;
+    if (queryParams.toString()) {
+        apiUrl += `?${queryParams.toString()}`;
+    }
+    
+    // 发送请求
+    fetch(apiUrl)
         .then(response => response.json())
         .then(newDanmaku => {
-            danmakuCache[idol.id] = newDanmaku; // 直接替换而不是合并
-            if (currentDisplayedIdol === idol.id) {
+            danmakuCache[idolId] = newDanmaku; // 直接替换而不是合并
+            if (currentDisplayedIdol === idolId) {
+                const container = document.getElementById('danmaku-container');
                 container.innerHTML = '';
-                danmakuCache[idol.id].forEach(appendSingleDanmaku);
+                danmakuCache[idolId].forEach(appendSingleDanmaku);
             }
+        })
+        .catch(error => {
+            console.error('获取弹幕失败:', error);
+            alert('获取弹幕失败，请检查网络连接');
         });
+}
+
+// 筛选弹幕的函数
+function filterDanmaku() {
+    if (!currentIdol) {
+        alert('请先选择一位偶像');
+        return;
+    }
+    
+    const startTime = document.getElementById('start-time').value;
+    const endTime = document.getElementById('end-time').value;
+    const keyword = document.getElementById('keyword-search').value.trim();
+    
+    // 验证时间范围
+    if (startTime && endTime && new Date(startTime) > new Date(endTime)) {
+        alert('开始时间不能晚于结束时间');
+        return;
+    }
+    
+    // 获取筛选后的弹幕
+    fetchDanmaku(currentIdol.id, startTime, endTime, keyword);
 }
 
 // 更新偶像详细信息
@@ -441,7 +493,7 @@ function appendSingleDanmaku(data) {
     const container = document.getElementById('danmaku-container');
     const danmaku = document.createElement('div');
     danmaku.className = 'danmaku';
-    danmaku.textContent = data.text;
+    danmaku.innerHTML = `<span class="username">${data.username}</span>: ${data.text}`;
     
     // 随机行位置
     const lineHeight = 30;
@@ -508,8 +560,7 @@ function login(username, password) {
     })
     .then(data => {
         if (data.userId) {
-            localStorage.setItem('currentUserId', data.userId.toString());
-            checkLoginStatus();
+            handleLoginSuccess(data.userId);
             window.location.href = data.redirectUrl || '/';
         } else {
             alert(data.error || '登录失败');

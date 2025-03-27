@@ -283,11 +283,8 @@ io.on('connection', (socket) => {
                 'INSERT INTO danmaku (text, idol_id, user_id) VALUES (?, ?, ?)',
                 [data.text, data.idolId, data.userId] // 前端直接传递userId
             );
-            
-            io.emit('new-danmaku', { 
-                ...data,
-                createdAt: new Date().toISOString()
-            });
+            const [user] = await pool.query('SELECT username FROM users WHERE id = ?', [data.userId]);
+            io.emit('new-danmaku', { ...data, username: user[0].username });
         } catch (error) {
             console.error('弹幕存储失败:', error);
         }
@@ -440,13 +437,36 @@ app.post('/api/idols', upload.array('photos', 10), async (req, res) => {
 });
 
 // 新增获取历史弹幕的API（添加到 server.js 路由部分）
+// 修改获取弹幕的 API（约在 452 行附近）
 app.get('/api/danmaku/:idolId', async (req, res) => {
     const idolId = req.params.idolId;
+    const { startTime, endTime, keyword } = req.query;
+
     try {
-        const [danmaku] = await pool.query(
-            'SELECT text, user_id, created_at FROM danmaku WHERE idol_id = ? ORDER BY created_at DESC LIMIT 100',
-            [idolId]
-        );
+        let query = `
+            SELECT d.text, u.username, d.created_at 
+            FROM danmaku d
+            JOIN users u ON d.user_id = u.id
+            WHERE d.idol_id = ?
+        `;
+        const queryParams = [idolId];
+
+        if (startTime) {
+            query += ' AND d.created_at >= ?';
+            queryParams.push(new Date(startTime));
+        }
+        if (endTime) {
+            query += ' AND d.created_at <= ?';
+            queryParams.push(new Date(endTime));
+        }
+        if (keyword) {
+            query += ' AND d.text LIKE ?';
+            queryParams.push(`%${keyword}%`);
+        }
+
+        query += ' ORDER BY d.created_at DESC LIMIT 100';
+
+        const [danmaku] = await pool.query(query, queryParams);
         res.json(danmaku);
     } catch (error) {
         console.error('获取弹幕失败:', error);
@@ -475,7 +495,7 @@ app.get('/api/idol/:idolId/fans/profile', async (req, res) => {
         res.json({
             locationCounts,
             ageCounts,
-            ranking: [] // 暂时返回空数组
+            ranking: [3] // 暂时返回空数组
         });
     } catch (error) {
         console.error('获取粉丝画像失败:', error);

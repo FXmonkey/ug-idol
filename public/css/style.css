@@ -83,6 +83,37 @@ body {
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
+/* 弹幕筛选区域 */
+.danmaku-filter {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.danmaku-filter input[type="datetime-local"],
+.danmaku-filter input[type="text"] {
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 14px;
+}
+
+.danmaku-filter button {
+    padding: 8px 15px;
+    background-color: #e91e63;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.danmaku-filter button:hover {
+    background-color: #c2185b;
+}
+
 /* 弹幕容器 */
 #danmaku-container {
     height: 300px;

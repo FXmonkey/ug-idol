@@ -52,6 +52,12 @@
         <div class="right-column">
             <div class="danmaku-wall">
                 <h3>实时弹幕</h3>
+                <div class="danmaku-filter">
+                    <input type="datetime-local" id="start-time" placeholder="开始时间">
+                    <input type="datetime-local" id="end-time" placeholder="结束时间">
+                    <input type="text" id="keyword-search" placeholder="搜索关键词">
+                    <button onclick="filterDanmaku()">筛选</button>
+                </div>
                 <div id="danmaku-container"></div>
             </div>
             <!-- 粉丝画像 -->
