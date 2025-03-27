@@ -11,10 +11,12 @@
 <body>
 <!-- 个人信息区域 -->
     <div id="user-info">
-        <div class="dropdown">
-            <div class="avatar-wrapper">
-                <img src="images/default_avatar.png" alt="头像" class="avatar">
-            </div>
+            <div class="dropdown">
+                <div class="avatar-wrapper">
+                    <a href="javascript:void(0)" onclick="handleAvatarClick()">
+                        <img src="images/default_avatar.png" alt="头像" class="avatar">
+                    </a>
+                </div>
             <!-- 在 dropdown-content 中添加功能 -->
             <div class="dropdown-content" id="myDropdown">
                 <div class="user-profile">
@@ -39,6 +41,10 @@
                 <h3>详细信息</h3>
                 <div id="idol-description">
                     <p>请选择一位偶像</p>
+                </div>
+                <div id="idol-gallery">
+                    <div id="preview-images"></div>
+                    <button id="view-more-images" style="display: none;">查看更多图片</button>
                 </div>
             </div>
         </div>
@@ -107,6 +113,16 @@
 
         // 页面加载时初始化用户信息
         window.onload = initUserInfo;
+
+        // 处理头像点击事件
+        function handleAvatarClick() {
+            const currentUserId = localStorage.getItem('currentUserId');
+            if (currentUserId) {
+                window.location.href = '/profile.html';
+            } else {
+                window.location.href = '/login.html';
+            }
+        }
     </script>
 </body>
 

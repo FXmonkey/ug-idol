@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>个人空间 - 地下偶像应援站</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/profile.css">
+</head>
+<body>
+    <div class="profile-container">
+        <!-- 返回首页按钮 -->
+        <a href="/" class="back-button">返回首页</a>
+
+        <!-- 个人资料区域 -->
+        <div class="profile-section">
+            <h2>个人资料</h2>
+            <div class="user-info">
+                <img src="images/default_avatar.png" alt="头像" class="profile-avatar">
+                <div class="user-details">
+                    <p>用户名：<span id="profile-username"></span></p>
+                    <p>邮箱：<span id="profile-email"></span></p>
+                    <p>注册时间：<span id="profile-created-at"></span></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 偶像管理区域 -->
+        <div class="idol-management-section">
+            <h2>偶像管理</h2>
+            <button id="add-idol-btn" class="primary-button">添加偶像</button>
+
+            <!-- 添加偶像的表单 -->
+            <div id="add-idol-form" class="modal" style="display: none;">
+                <div class="modal-content">
+                    <span class="close">&times;</span>
+                    <h3>添加偶像</h3>
+                    <form id="idol-form">
+                        <div class="form-group">
+                            <label for="idol-name">名字：</label>
+                            <input type="text" id="idol-name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="idol-gender">性别：</label>
+                            <select id="idol-gender" required>
+                                <option value="男">男</option>
+                                <option value="女">女</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="idol-group">所属团体：</label>
+                            <input type="text" id="idol-group" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="idol-image">照片URL：</label>
+                            <input type="text" id="idol-image" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="idol-homepage">个人主页链接：</label>
+                            <input type="url" id="idol-homepage" required>
+                        </div>
+                        <button type="submit" class="submit-button">提交</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- 已添加的偶像列表 -->
+            <div id="idol-list" class="idol-list">
+                <!-- 偶像卡片将通过JavaScript动态添加 -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 获取用户ID
+        const userId = localStorage.getItem('currentUserId');
+        if (!userId) {
+            window.location.href = '/login.html';
+        }
+
+        // 获取DOM元素
+        const modal = document.getElementById('add-idol-form');
+        const addIdolBtn = document.getElementById('add-idol-btn');
+        const closeBtn = document.getElementsByClassName('close')[0];
+        const idolForm = document.getElementById('idol-form');
+
+        // 打开模态框
+        addIdolBtn.onclick = function() {
+            modal.style.display = 'block';
+        }
+
+        // 关闭模态框
+        closeBtn.onclick = function() {
+            modal.style.display = 'none';
+        }
+
+        // 点击模态框外部关闭
+        window.onclick = function(event) {
+            if (event.target == modal) {
+                modal.style.display = 'none';
+            }
+        }
+
+        // 加载用户信息
+        async function loadUserInfo() {
+            try {
+                const response = await fetch(`/api/users/${userId}`);
+                const user = await response.json();
+                
+                document.getElementById('profile-username').textContent = user.username || 'Unknown';
+                document.getElementById('profile-email').textContent = user.email || 'No email';
+                document.getElementById('profile-created-at').textContent = new Date(user.created_at).toLocaleDateString();
+            } catch (error) {
+                console.error('Error loading user info:', error);
+            }
+        }
+
+        // 加载偶像列表
+        async function loadIdols() {
+            try {
+                const response = await fetch('/api/idols');
+                const idols = await response.json();
+                const idolList = document.getElementById('idol-list');
+                idolList.innerHTML = '';
+
+                idols.forEach(idol => {
+                    const idolCard = document.createElement('div');
+                    idolCard.className = 'idol-card';
+                    idolCard.innerHTML = `
+                        <img src="${idol.image}" alt="${idol.name}" class="idol-image">
+                        <h3>${idol.name}</h3>
+                        <p>团体：${idol.group_name || '未知'}</p>
+                        <p>性别：${idol.gender}</p>
+                        <a href="${idol.homepage}" target="_blank" class="homepage-link">个人主页</a>
+                    `;
+                    idolList.appendChild(idolCard);
+                });
+            } catch (error) {
+                console.error('Error loading idols:', error);
+            }
+        }
+
+        // 提交表单
+        idolForm.onsubmit = async function(e) {
+            e.preventDefault();
+            
+            const formData = {
+                name: document.getElementById('idol-name').value,
+                gender: document.getElementById('idol-gender').value,
+                group_name: document.getElementById('idol-group').value,
+                image: document.getElementById('idol-image').value,
+                homepage: document.getElementById('idol-homepage').value
+            };
+
+            try {
+                const response = await fetch('/api/idols', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                if (response.ok) {
+                    alert('偶像添加成功！');
+                    modal.style.display = 'none';
+                    idolForm.reset();
+                    loadIdols(); // 重新加载偶像列表
+                } else {
+                    const error = await response.json();
+                    alert(error.message || '添加失败，请重试');
+                }
+            } catch (error) {
+                console.error('Error adding idol:', error);
+                alert('添加失败，请重试');
+            }
+        }
+
+        // 页面加载时执行
+        loadUserInfo();
+        loadIdols();
+    </script>
+</body>
+</html>

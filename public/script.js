@@ -228,16 +228,109 @@ function selectIdol(idol) {
 // 更新偶像详细信息
 function updateIdolInfo() {
     const description = document.getElementById('idol-description');
+    const previewImages = document.getElementById('preview-images');
+    const viewMoreButton = document.getElementById('view-more-images');
+    console.log("当前偶像的图片:", currentIdol.images);
     if (currentIdol) {
         description.innerHTML = `
-            <img src="${currentIdol.image}" width="200">
             <p>年龄：${currentIdol.age}</p>
             <p>所在地：${currentIdol.location}</p>
             <p>${currentIdol.description}</p>
         `;
+        
+        // 清空预览图片容器
+        previewImages.innerHTML = '';
+        
+        // 显示最多4张图片
+        const imagesToShow = currentIdol.images.slice(0, 4);
+        imagesToShow.forEach(image => {
+            const img = document.createElement('img');
+            img.src = image;
+            img.width = 100;
+            img.height = 100;
+            img.style.objectFit = 'cover';
+            img.style.margin = '5px';
+            img.onclick = () => showOriginalImage(image);
+            img.title = "点击查看原图";
+            previewImages.appendChild(img);
+        });
+        
+        // 如果图片超过4张，显示"查看更多"按钮
+        if (currentIdol.images.length > 4) {
+            viewMoreButton.style.display = 'block';
+            viewMoreButton.onclick = showAllImages;
+        } else {
+            viewMoreButton.style.display = 'none';
+        }
     } else {
         description.innerHTML = '<p>请选择一位偶像</p>';
+        previewImages.innerHTML = '';
+        viewMoreButton.style.display = 'none';
     }
+}
+
+// 显示原图的函数
+function showOriginalImage(imageSrc) {
+    const modal = document.createElement('div');
+    modal.className = 'image-modal original-image-view';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <div class="original-image-container">
+                <img src="${imageSrc}" alt="原图">
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+
+    const closeBtn = modal.querySelector('.close');
+    const closeModal = () => {
+        document.body.removeChild(modal);
+    };
+
+    closeBtn.onclick = closeModal;
+    modal.onclick = (event) => {
+        if (event.target === modal) {
+            closeModal();
+        }
+    };
+}
+
+function showAllImages() {
+    const modal = document.createElement('div');
+    modal.className = 'image-modal';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <div class="image-gallery"></div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+
+    const gallery = modal.querySelector('.image-gallery');
+    currentIdol.images.forEach(image => {
+        const img = document.createElement('img');
+        img.src = image;
+        img.width = 200;
+        img.height = 200;
+        img.style.objectFit = 'cover';
+        img.style.margin = '10px';
+        img.onclick = () => showOriginalImage(image);
+        img.title = "点击查看原图";
+        gallery.appendChild(img);
+    });
+
+    const closeBtn = modal.querySelector('.close');
+    const closeModal = () => {
+        document.body.removeChild(modal);
+    };
+
+    closeBtn.onclick = closeModal;
+    modal.onclick = (event) => {
+        if (event.target === modal) {
+            closeModal();
+        }
+    };
 }
 // 获取粉丝画像
 function fetchFanProfile(idolId) {
@@ -435,9 +528,20 @@ function login(username, password) {
     });
 }
 function logout() {
-    localStorage.removeItem('currentUserId');
-    checkLoginStatus();
-    window.location.href = '/login.html';
+    fetch('/api/logout', {
+        method: 'POST',
+        credentials: 'include'
+    })
+    .then(response => response.json())
+    .then(data => {
+        localStorage.removeItem('currentUserId');
+        checkLoginStatus();
+        window.location.href = '/login.html';
+    })
+    .catch(error => {
+        console.error('登出失败:', error);
+        alert('登出失败，请重试');
+    });
 }
 
 // 检查登录状态

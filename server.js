@@ -2,6 +2,47 @@ const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
 const mysql = require('mysql2/promise'); // 引入 MySQL2
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+
+// 配置文件上传
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        const idolName = req.body.name;
+        const uploadDir = path.join(__dirname, 'public', 'images', idolName);
+        
+        // 确保目录存在
+        if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
+        }
+        cb(null, uploadDir);
+    },
+    filename: function (req, file, cb) {
+        // 生成文件名：时间戳-原始文件名
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, uniqueSuffix + path.extname(file.originalname));
+    }
+});
+
+// 文件过滤器
+const fileFilter = (req, file, cb) => {
+    // 只接受图片文件
+    if (file.mimetype.startsWith('image/')) {
+        cb(null, true);
+    } else {
+        cb(new Error('只能上传图片文件！'), false);
+    }
+};
+
+const upload = multer({ 
+    storage: storage,
+    fileFilter: fileFilter,
+    limits: {
+        fileSize: 5 * 1024 * 1024, // 限制5MB
+        files: 10 // 最多10个文件
+    }
+});
 // const bcrypt = require('bcrypt'); // 引入 bcrypt  先注释掉
 const app = express();
 const server = http.createServer(app);
@@ -27,6 +68,19 @@ async function initializeDatabase() {
     try {
         pool = mysql.createPool(dbConfig);
         console.log('Connected to MySQL');
+        // 创建偶像表（新增）
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS idols (
+                id INT PRIMARY KEY AUTO_INCREMENT,
+                name VARCHAR(255) NOT NULL,
+                gender ENUM('男','女') NOT NULL,
+                group_name VARCHAR(255),
+                image VARCHAR(255) NOT NULL,
+                homepage VARCHAR(255),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        console.log('Idols table created');
         // 创建 users 表
         await pool.query(`
             CREATE TABLE IF NOT EXISTS users (
@@ -111,7 +165,17 @@ app.use(cors({
     methods: ["GET", "POST", "PUT"],
     credentials: true
 }));
-// 应用于需要登录才能访问的路由
+// 添加需要登录才能访问的路由保护
+app.get('/profile.html', (req, res) => {
+    const userId = req.session.userId;
+    if (!userId) {
+        res.redirect('/login.html');
+    } else {
+        res.sendFile(__dirname + '/public/profile.html');
+    }
+});
+
+// 静态文件中间件，不包括profile.html（已经由上面的路由处理）
 app.use(express.static(__dirname + '/public'));
 // 注册 API
 app.post('/api/register', async (req, res) => {
@@ -164,6 +228,9 @@ app.post('/api/login', async (req, res) => {
                 userId: null  // 明确返回null
             });
         }
+        
+        // 设置session
+        req.session.userId = rows[0].id;
         
         res.json({ 
             message: '登录成功',
@@ -244,15 +311,130 @@ io.on('connection', (socket) => {
     });
 });
 
+// 获取偶像图片列表的函数
+function getImagesFromFolder(folderPath) {
+    if (!folderPath) {
+        console.warn('图片文件夹路径未定义');
+        return [];
+    }
+    const fullPath = path.join(__dirname, 'public', folderPath);
+    try {
+        if (fs.existsSync(fullPath)) {
+            return fs.readdirSync(fullPath)
+                .filter(file => /\.(jpg|jpeg|png|gif)$/i.test(file))
+                .map(file => `/${folderPath}/${file}`);
+        } else {
+            console.warn(`文件夹不存在: ${fullPath}`);
+        }
+    } catch (error) {
+        console.error('读取图片文件夹失败:', error);
+    }
+    return [];
+}
+
 // 获取偶像列表 API
 app.get('/api/idols', async (req, res) => {
     try {
         const [idols] = await pool.query('SELECT * FROM idols');
-        res.json(idols); // 返回偶像数据
+        
+        // 为每个偶像添加图片列表
+        const idolsWithImages = idols.map(idol => {
+            const images = idol.image ? getImagesFromFolder(idol.image) : [];
+            return {
+                ...idol,
+                images: images,
+                image: images[0] || '/images/default_avatar.png' // 设置默认图片
+            };
+        });
+        
+        res.json(idolsWithImages);
     } catch (error) {
         console.error('获取偶像列表失败:', error);
         res.status(500).json({
             error: '获取偶像列表失败'
+        });
+    }
+});
+
+// 添加一个用于检查数据库结构的路由
+app.get('/api/check-db', async (req, res) => {
+    try {
+        const [rows] = await pool.query('DESCRIBE idols');
+        res.json(rows);
+    } catch (error) {
+        console.error('检查数据库结构失败:', error);
+        res.status(500).json({
+            error: '检查数据库结构失败'
+        });
+    }
+});
+
+// 获取用户信息 API
+app.get('/api/users/:userId', async (req, res) => {
+    const userId = req.params.userId;
+    
+    try {
+        const [users] = await pool.query('SELECT id, username, email, created_at FROM users WHERE id = ?', [userId]);
+        
+        if (users.length === 0) {
+            return res.status(404).json({
+                error: '用户不存在'
+            });
+        }
+        
+        res.json(users[0]);
+    } catch (error) {
+        console.error('获取用户信息失败:', error);
+        res.status(500).json({
+            error: '获取用户信息失败'
+        });
+    }
+});
+
+// 添加偶像 API
+app.post('/api/idols', upload.array('photos', 10), async (req, res) => {
+    const { name, gender, group_name, homepage } = req.body;
+
+    // 验证必填字段
+    if (!name || !gender || !group_name || !homepage) {
+        return res.status(400).json({
+            error: '所有字段都是必填的'
+        });
+    }
+
+    // 确保至少上传了一张图片
+    if (!req.files || req.files.length === 0) {
+        return res.status(400).json({
+            error: '请至少上传一张图片'
+        });
+    }
+
+    try {
+        // 图片文件夹路径（相对于public目录）
+        const imagePath = `images/${name}`;
+
+        // 插入偶像信息到数据库
+        const [result] = await pool.query(
+            'INSERT INTO idols (name, gender, group_name, image, homepage) VALUES (?, ?, ?, ?, ?)',
+            [name, gender, group_name, imagePath, homepage]
+        );
+
+        res.status(201).json({
+            message: '偶像添加成功',
+            idolId: result.insertId,
+            images: req.files.map(file => `/${imagePath}/${file.filename}`)
+        });
+    } catch (error) {
+        // 如果数据库操作失败，删除已上传的文件
+        if (req.files) {
+            req.files.forEach(file => {
+                fs.unlinkSync(file.path);
+            });
+        }
+        
+        console.error('添加偶像失败:', error);
+        res.status(500).json({
+            error: '添加偶像失败'
         });
     }
 });
