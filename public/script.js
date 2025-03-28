@@ -1,4 +1,4 @@
-const socket = io('http://localhost:3000', {
+let socket = io('http://localhost:3000', {
     transports: ['websocket'] // 强制使用 websocket
 });
 // 增加连接状态监听
@@ -568,14 +568,16 @@ function login(username, password) {
     })
     .catch(error => {
         console.error('登录请求失败:', error);
-        let errorMsg = '';
+        let errorMsg = error.message || '网络连接不稳定，请检查网络后重试';
+        // 如果错误消息是JSON字符串，尝试解析它
         try {
-            let errorObj = JSON.parse(error.message);
-            errorMsg = errorObj.error;
+            const errorObj = JSON.parse(error.message);
+            errorMsg = errorObj.error || errorMsg;
         } catch (parseError) {
-            console.error('解析 JSON 时出错:', parseError);
+            // 如果解析失败，使用原始错误消息
+            console.log('不是JSON格式的错误消息，使用原始错误信息');
         }
-        alert(errorMsg || '网络连接不稳定，请检查网络后重试',);
+        alert(errorMsg);
     });
 }
 function logout() {
