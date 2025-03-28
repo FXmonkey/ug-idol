@@ -7,19 +7,22 @@ const path = require('path');
 const fs = require('fs');
 
 // 配置文件上传
+// 修改multer配置（约第7-20行）
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
-        const idolName = req.body.name;
-        const uploadDir = path.join(__dirname, 'public', 'images', idolName);
-        
-        // 确保目录存在
-        if (!fs.existsSync(uploadDir)) {
-            fs.mkdirSync(uploadDir, { recursive: true });
+        let uploadDir;
+        // 区分用户头像和偶像图片
+        if (file.fieldname === 'avatar') {
+            uploadDir = path.join(__dirname, 'public/images/avatars', req.params.id);
+        } else {
+            const idolName = req.body.name;
+            uploadDir = path.join(__dirname, 'public/images/idols', idolName);
         }
+        
+        fs.mkdirSync(uploadDir, { recursive: true });
         cb(null, uploadDir);
     },
     filename: function (req, file, cb) {
-        // 生成文件名：时间戳-原始文件名
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
         cb(null, uniqueSuffix + path.extname(file.originalname));
     }
@@ -210,6 +213,54 @@ app.post('/api/register', async (req, res) => {
         connection.release();
     }
 });
+// 用户信息更新接口
+app.put('/api/users/:id/basic', async (req, res) => {
+    try {
+        await pool.query('UPDATE users SET username = ? WHERE id = ?', 
+            [req.body.username, req.params.id]);
+        res.json({ message: '资料更新成功' });
+    } catch (error) {
+        res.status(500).json({ error: '更新失败' });
+    }
+});
+
+// 修改头像接口
+// 在头像上传路由中返回文件名
+app.put('/api/users/:id/avatar', upload.single('avatar'), async (req, res) => {
+    try {
+        const filename = req.file.filename;
+        // 更新数据库记录
+        await pool.query('UPDATE users SET avatar = ? WHERE id = ?', [filename, req.params.id]);
+        res.json({ filename });  // 返回文件名
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
+// 修改密码接口
+app.put('/api/users/:id/password', async (req, res) => {
+    const { oldPassword, newPassword } = req.body;
+    try {
+        // 验证旧密码
+        const [rows] = await pool.query(
+            'SELECT password FROM userpasswd WHERE user_id = ?',
+            [req.params.id]
+        );
+        
+        if (rows[0].password !== oldPassword) {
+            return res.status(400).json({ error: '旧密码不正确' });
+        }
+
+        // 更新密码
+        await pool.query('UPDATE userpasswd SET password = ? WHERE user_id = ?',
+            [newPassword, req.params.id]);
+        
+        res.json({ message: '密码修改成功' });
+    } catch (error) {
+        res.status(500).json({ error: '密码修改失败' });
+    }
+});
+
 // 登录 API
 app.post('/api/login', async (req, res) => {
     const { username, password } = req.body;
@@ -371,7 +422,7 @@ app.get('/api/users/:userId', async (req, res) => {
     const userId = req.params.userId;
     
     try {
-        const [users] = await pool.query('SELECT id, username, email, created_at FROM users WHERE id = ?', [userId]);
+        const [users] = await pool.query('SELECT id, username, email, avatar, bio, created_at FROM users WHERE id = ?', [userId]);
         
         if (users.length === 0) {
             return res.status(404).json({
@@ -538,16 +589,8 @@ app.put('/api/change-password', async (req, res) => {
     }
 });
 
+// 在用户信息接口中添加avatar字段
 app.get('/api/users/:id', async (req, res) => {
-    try {
-        const [rows] = await pool.query(`
-            SELECT id, username, email, created_at 
-            FROM users 
-            WHERE id = ?
-        `, [req.params.id]);
-        
-        res.json(rows[0] || {});
-    } catch (error) {
-        res.status(500).json({ error: '获取用户信息失败' });
-    }
+    const [rows] = await pool.query('SELECT username, email, created_at, avatar FROM users WHERE id = ?', [req.params.id]);
+    res.json(rows[0] || {});
 });

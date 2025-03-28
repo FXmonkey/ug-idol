@@ -12,7 +12,69 @@
 
         <!-- 个人资料区域 -->
         <div class="profile-section">
-            <h2>个人资料</h2>
+            <div class="profile-header">
+                <h2>个人信息</h2>
+                <div class="action-buttons">
+                    <button class="primary-button" id="edit-basic-btn">修改昵称</button>
+                    <button class="secondary-button" id="edit-avatar-btn">更换头像</button>
+                    <button class="secondary-button" id="edit-password-btn">修改密码</button>
+                </div>
+            </div>
+        
+            <!-- 基本信息模态框 -->
+            <div id="edit-basic-modal" class="modal">
+                <div class="modal-content">
+                    <span class="close">&times;</span>
+                    <h3>修改基本信息</h3>
+                    <form id="basic-form">
+                        <div class="form-group">
+                            <label for="username">新昵称：</label>
+                            <input type="text" id="username" required>
+                        </div>
+                        <button type="submit" class="submit-button">保存</button>
+                    </form>
+                </div>
+            </div>
+        
+            <!-- 头像修改模态框 -->
+            <div id="edit-avatar-modal" class="modal">
+                <div class="modal-content">
+                    <span class="close">&times;</span>
+                    <h3>更换头像</h3>
+                    <form id="avatar-form">
+                        <div class="form-group">
+                            <input type="file" id="avatar" accept="image/*">
+                            <div id="avatar-preview" class="avatar-preview"></div>
+                        </div>
+                        <button type="submit" class="submit-button">上传</button>
+                    </form>
+                </div>
+            </div>
+        
+            <!-- 密码修改模态框 -->
+            <div id="edit-password-modal" class="modal">
+                <div class="modal-content">
+                    <span class="close">&times;</span>
+                    <h3>修改密码</h3>
+                    <form id="password-form">
+                        <div class="form-group">
+                            <label for="old-password">旧密码：</label>
+                            <input type="password" id="old-password" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="new-password">新密码：</label>
+                            <input type="password" id="new-password" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="confirm-password">确认密码：</label>
+                            <input type="password" id="confirm-password" required>
+                        </div>
+                        <button type="submit" class="submit-button">确认修改</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+            
             <div class="user-info">
                 <img src="images/default_avatar.png" alt="头像" class="profile-avatar">
                 <div class="user-details">
@@ -82,6 +144,120 @@
         const closeBtn = document.getElementsByClassName('close')[0];
         const idolForm = document.getElementById('idol-form');
 
+        const modals = {
+            basic: initModal('edit-basic-btn', 'edit-basic-modal'),
+            avatar: initModal('edit-avatar-btn', 'edit-avatar-modal'),
+            password: initModal('edit-password-btn', 'edit-password-modal')
+        };
+        function initModal(btnId, modalId) {
+            const btn = document.getElementById(btnId);
+            const modal = document.getElementById(modalId);
+            const close = modal.querySelector('.close');
+            
+            btn.addEventListener('click', () => modal.style.display = 'block');
+            close.addEventListener('click', () => modal.style.display = 'none');
+            return modal;
+        }
+
+        // 处理基本信息表单
+        document.getElementById('basic-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            try {
+                await fetch(`/api/users/${userId}/basic`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: document.getElementById('username').value })
+                });
+                alert('基本信息更新成功');
+                modals.basic.style.display = 'none';
+                loadUserInfo();
+            } catch (error) {
+                console.error('更新失败:', error);
+            }
+        });
+
+        // 处理头像表单
+        document.getElementById('avatar-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData();
+            const file = document.getElementById('avatar').files[0];
+            if (!file) return alert('请选择头像文件');
+            formData.append('avatar', file);
+
+            try {
+                // 上传成功后获取服务器返回的文件名
+                const response = await fetch(`/api/users/${userId}/avatar`, {
+                    method: 'PUT',
+                    body: formData
+                });
+                const result = await response.json();  // 新增获取服务器响应
+                
+                // 更新所有头像显示
+                const timestamp = Date.now();
+                const avatarPath = `/images/avatars/${userId}/${result.filename}?t=${timestamp}`;
+                console.log('更新所有头像显示:', result.filename);
+                // 更新当前页面的头像
+                document.querySelector('.profile-avatar').src = avatarPath;
+                
+                // 更新导航栏头像（如果存在）
+                const headerAvatar = document.getElementById('header-avatar');
+                if(headerAvatar) {
+                    headerAvatar.src = avatarPath;
+                }
+                
+                alert('头像更新成功');
+                modals.avatar.style.display = 'none';
+            } catch (error) {
+                console.error('头像更新失败:', error);
+            }
+        });
+
+        // 处理密码表单
+        document.getElementById('password-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const newPassword = document.getElementById('new-password').value;
+            
+            if (newPassword !== document.getElementById('confirm-password').value) {
+                return alert('两次输入的新密码不一致');
+            }
+
+            try {
+                await fetch(`/api/users/${userId}/password`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        oldPassword: document.getElementById('old-password').value,
+                        newPassword: newPassword
+                    })
+                });
+                alert('密码修改成功，请重新登录');
+                localStorage.removeItem('currentUserId');
+                window.location.href = '/login.html';
+            } catch (error) {
+                console.error('密码修改失败:', error);
+            }
+        });
+
+        document.getElementById('avatar').addEventListener('change', function(e) {
+            const preview = document.getElementById('avatar-preview');
+            const file = e.target.files[0];
+            
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    preview.innerHTML = `<img src="${e.target.result}" class="preview-image">`;
+                }
+                reader.readAsDataURL(file);
+            } else {
+                preview.innerHTML = '';
+            }
+        });
+
+        // 在关闭模态框时清除预览
+        modals.avatar.querySelector('.close').addEventListener('click', () => {
+            document.getElementById('avatar-preview').innerHTML = '';
+        });
+
         // 打开模态框
         addIdolBtn.onclick = function() {
             modal.style.display = 'block';
@@ -108,6 +284,11 @@
                 document.getElementById('profile-username').textContent = user.username || 'Unknown';
                 document.getElementById('profile-email').textContent = user.email || 'No email';
                 document.getElementById('profile-created-at').textContent = new Date(user.created_at).toLocaleDateString();
+                
+                // 新增头像更新逻辑（添加时间戳防止缓存）
+                const avatarImg = document.querySelector('.profile-avatar');
+                avatarImg.src = `/images/avatars/${user.id}/${user.avatar}?t=${Date.now()}`;
+                console.log('头像路径:', avatarImg.src);
             } catch (error) {
                 console.error('Error loading user info:', error);
             }

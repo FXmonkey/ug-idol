@@ -14,14 +14,16 @@
             <div class="dropdown">
                 <div class="avatar-wrapper">
                     <a href="javascript:void(0)" onclick="handleAvatarClick()">
-                        <img src="images/default_avatar.png" alt="头像" class="avatar">
+                        <img id="header-avatar" src="images/default_avatar.png" alt="头像" class="avatar">
                     </a>
                 </div>
             <!-- 在 dropdown-content 中添加功能 -->
             <div class="dropdown-content" id="myDropdown">
                 <div class="user-profile">
-                    <p>用户名：<span id="username">John Doe</span></p>
-                    <p>邮箱：<span id="email">johndoe@example.com</span></p>
+                    <p><span id="username">John Doe</span></p>
+                    <div class="bio-container">
+                        <input type="text" id="bio" class="bio-input" readonly>
+                    </div>
                 </div>
                 <a href="#change-password" id="change-password">修改密码</a>
                 <button id="logout-button" onclick="logout()">退出登录</button>
@@ -93,11 +95,20 @@
         }
 
         // 初始化用户信息
-        function initUserInfo() {
-            const userInfo = getUserInfo();
-            document.getElementById('username').textContent = userInfo.username;
-            document.getElementById('email').textContent = userInfo.email;
-        }
+        (async function initUserInfo() {
+            try {
+                const userId = localStorage.getItem('currentUserId');
+                if (!userId) return;
+                
+                const response = await fetch(`/api/users/${userId}`);
+                const user = await response.json();
+                console.log('用户信息:', user);
+                document.getElementById('username').textContent = user.username;
+                document.getElementById('bio').value = user.bio ? user.bio : '暂无简介';
+            } catch (error) {
+                console.error('加载用户信息失败:', error);
+            }
+        })();
 
         // 切换下拉菜单的显示和隐藏
         function toggleDropdown() {
@@ -129,6 +140,24 @@
                 window.location.href = '/login.html';
             }
         }
+
+        (async function loadUserAvatar() {
+            const userId = localStorage.getItem('currentUserId');
+            if (!userId) return;
+            
+            try {
+                const response = await fetch(`/api/users/${userId}`);
+                const user = await response.json();
+                const avatarImg = document.getElementById('header-avatar');
+                // 修正路径拼接，使用user.avatar作为文件名，时间戳作为查询参数
+                avatarImg.src = `/images/avatars/${user.id}/${user.avatar}?t=${Date.now()}`;
+                console.log('头像路径:', avatarImg.src);
+            } catch (error) {
+                console.error('加载头像失败:', error);
+                avatarImg.src = 'images/default_avatar.png';
+            }
+        })();
+
     </script>
 </body>
 
