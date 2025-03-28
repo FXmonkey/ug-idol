@@ -256,21 +256,13 @@ body {
     display: none;
 }
 
-/* 个人信息区域样式 */
-
+/* 更新个人信息区域样式 */
 #user-info {
-    background: #fff;
-    padding: 10px 20px;
-    border-radius: 15px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    margin-bottom: 20px;
-    display: flex;
-    justify-content: flex-end;
-    align-items: center;
-    gap: 10px;
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1000;
 }
-
-/* 下拉菜单样式 */
 
 .dropdown {
     position: relative;
@@ -278,21 +270,47 @@ body {
 }
 
 .avatar-wrapper {
-    width: 40px;
-    height: 40px;
+    width: 50px;
+    height: 50px;
     border-radius: 50%;
     overflow: hidden;
     cursor: pointer;
-    position: relative;
+    transition: transform 0.3s ease;
+    border: 2px solid #e91e63;
 }
+
+.avatar-wrapper:hover {
+    transform: scale(1.1);
+    box-shadow: 0 0 15px rgba(233, 30, 99, 0.5);
+}
+
 #header-avatar {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
 }
+
+.dropdown-content {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: 65px;
+    min-width: 280px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    opacity: 0;
+    transform: translateY(-10px);
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    z-index: 1000;
+}
+
+.dropdown-content.show {
+    display: block;
+    opacity: 1;
+    transform: translateY(0);
+}
+
 .avatar {
     width: 100%;
     height: 100%;
@@ -318,22 +336,24 @@ body {
     display: block;
 }
 
-.dropdown-content a:hover {
-    background-color: #ddd;
-}
-
 /* 恢复原来的hover效果 */
 .dropdown:hover .dropdown-content {
     display: block;
 }
 
-/* 增强菜单交互区域 */
-/* 调整菜单定位 */
-.dropdown-content {
-    top: 40px;  /* 减少间距 */
-    right: 0;
-    margin-top: -5px; /* 消除间隙 */
-    transition: opacity 0.2s ease, transform 0.2s ease;
+#logout-button {
+    width: 100%;
+    background: none;
+    border: none;
+    text-align: left;
+    cursor: pointer;
+    margin-top: 5px;
+    color: #007bff;
+}
+
+#logout-button:hover {
+    background: #e40808ee; /* 更柔和的悬停背景 */
+    color: #fafafada;
 }
 
 /* 添加悬停缓冲区 */
@@ -367,32 +387,63 @@ body {
     background-color: transparent;
 }
 
-#user-info button {
+/* #user-info button {
     background-color: #dc3545;
     color: white;
-}
+} */
 
-#user-info a:hover,
+/* #user-info a:hover,
 #user-info button:hover {
     opacity: 0.8;
-}
+} */
 
 @import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700&display=swap');
 
 
 .dropdown-content {
-    background: #ffffff; /* 改为纯白背景 */
-    border-radius: 16px;
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1); /* 更柔和的阴影 */
-    padding: 8px 0;
-    min-width: 200px;
+    background: rgba(255, 255, 255, 0.98);
+    border-radius: 12px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    opacity: 0;
+    transform: translateY(10px) scale(0.95);
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 1.2);
 }
 
-/* 新增用户信息区域 */
+/* 新增入场动画 */
+.dropdown-content.show {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+}
+
+/* 用户信息区域 */
 .user-profile {
-    padding: 10px 20px;
-    border-bottom: 10px solid #f5f5f5;
+    padding: 16px;
+    text-align: center; /* 新增居中 */
+}
+
+.username {
+    font-size: 1.2em !important;
+    font-weight: 600;
+    color: #e91e63;
     margin-bottom: 8px;
+}
+
+.bio-text {
+    font-size: 0.85em; /* 更小的字号 */
+    color: #666;
+    line-height: 1.4;
+    max-width: 200px;
+    margin: 0 auto; /* 水平居中 */
+    padding: 4px 8px;
+}
+
+.user-profile p {
+    margin: 0;
+    font-size: 1.1em;
+    font-weight: 500;
+    color: #333;
 }
 
 .user-profile div {
@@ -423,16 +474,14 @@ body {
     filter: hue-rotate(-20deg); /* 使图标颜色更协调 */
 }
 
+#change-password:hover {
+    background: #e40808ee; /* 更柔和的悬停背景 */
+    color: #fafafada;
+}
+
 #logout-button::after {
     content: '➡️';
     margin-left: 12px;
-    opacity: 0.8;
-}
-
-/* 登出按钮悬停效果 */
-#logout-button:hover {
-    color: #d81b60;
-    background: #f8f8f8;
 }
 
 /* 密码弹窗样式 */
@@ -701,19 +750,17 @@ body {
 
 /* 添加在 style.css 底部 */
 .bio-container {
-    margin-top: 8px;
+    margin-top: 10px;
 }
 
 .bio-input {
     width: 100%;
+    padding: 8px;
     border: 1px solid #ddd;
-    background: #f5f5f5;
-    font-size: 13px;
+    border-radius: 6px;
+    background: #f9f9f9;
+    font-size: 0.9em;
     color: #666;
-    padding: 6px 8px;
-    border-radius: 4px;
-    cursor: default; /* 禁用输入光标 */
-    box-sizing: border-box;
 }
 
 .bio-input:focus {
@@ -725,4 +772,16 @@ body {
     background: #f5f5f5;
     border-color: #ddd;
     outline: none;
+}
+/* 在原有.user-profile样式中添加 */
+.user-profile {
+    padding-bottom: 16px;
+    margin-bottom: 16px;
+    border-bottom: 2px solid rgba(240, 20, 93, 0.808);
+}
+
+/* 调整按钮间距 */
+.dropdown-content a, 
+#logout-button {
+    margin-top: 8px;
 }

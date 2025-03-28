@@ -12,7 +12,7 @@
 <!-- 个人信息区域 -->
     <div id="user-info">
             <div class="dropdown">
-                <div class="avatar-wrapper">
+                <div class="avatar-wrapper" style="width: 48px; height: 48px;">
                     <a href="javascript:void(0)" onclick="handleAvatarClick()">
                         <img id="header-avatar" src="images/default_avatar.png" alt="头像" class="avatar">
                     </a>
@@ -20,9 +20,9 @@
             <!-- 在 dropdown-content 中添加功能 -->
             <div class="dropdown-content" id="myDropdown">
                 <div class="user-profile">
-                    <p><span id="username">John Doe</span></p>
+                    <p class="username"><span id="username">John Doe</span></p>
                     <div class="bio-container">
-                        <input type="text" id="bio" class="bio-input" readonly>
+                        <p id="bio" class="bio-text">暂无简介</p>
                     </div>
                 </div>
                 <a href="#change-password" id="change-password">修改密码</a>
@@ -104,7 +104,7 @@
                 const user = await response.json();
                 console.log('用户信息:', user);
                 document.getElementById('username').textContent = user.username;
-                document.getElementById('bio').value = user.bio ? user.bio : '暂无简介';
+                document.getElementById('bio').textContent = user.bio ? user.bio : '暂无简介';
             } catch (error) {
                 console.error('加载用户信息失败:', error);
             }
@@ -114,7 +114,17 @@
         function toggleDropdown() {
             document.getElementById("myDropdown").classList.toggle("show");
         }
+        document.querySelector('.avatar-wrapper').addEventListener('mouseenter', function() {
+            document.getElementById("myDropdown").classList.add("show");
+        });
 
+        document.querySelector('.dropdown').addEventListener('mouseleave', function() {
+            setTimeout(() => {
+                if (!document.querySelector('.dropdown:hover')) {
+                    document.getElementById("myDropdown").classList.remove("show");
+                }
+            }, 200);
+        });
         // 点击页面其他地方时关闭下拉菜单
         window.onclick = function (event) {
             if (!event.target.matches('.avatar')) {
