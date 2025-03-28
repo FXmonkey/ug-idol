@@ -277,6 +277,7 @@ body {
     cursor: pointer;
     transition: transform 0.3s ease;
     border: 2px solid #e91e63;
+    position: relative;
 }
 
 .avatar-wrapper:hover {
@@ -288,6 +289,9 @@ body {
     width: 100%;
     height: 100%;
     object-fit: cover;
+    position: absolute;
+    left: 0;
+    top: 0;
 }
 
 .dropdown-content {
