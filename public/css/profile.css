@@ -110,9 +110,44 @@
 
 .form-group input, .form-group select {
     width: 100%;
-    padding: 8px;
+    padding: 5px;
     border: 1px solid #ddd;
     border-radius: 4px;
+    box-sizing:border-box;
+}
+
+.form-group input[type="file"] {
+    display: none;
+}
+
+/* 修改文件上传容器样式 */
+.form-group .file-upload-container {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+/* 修改文件上传标签样式 */
+.form-group .file-upload-container label[for="idol-photos"] {
+    display: inline-block;
+    margin-bottom: 0;
+    white-space: nowrap;
+}
+
+/* 保持原有按钮样式不变 */
+.custom-file-upload {
+    display: inline-block;
+    background-color: #45a049;
+    color: rgb(255, 255, 255);
+    padding: 1px 15px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    border: 1px solid #45a049;
+}
+
+.custom-file-upload:hover {
+    background-color: #de9cf8ea;
 }
 
 .submit-button {
