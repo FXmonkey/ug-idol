@@ -103,8 +103,8 @@
                         <div class="form-group">
                             <label for="idol-gender">性别：</label>
                             <select id="idol-gender" required>
-                                <option value="男">男</option>
                                 <option value="女">女</option>
+                                <option value="男">男</option>
                             </select>
                         </div>
                         <div class="form-group">
@@ -112,8 +112,14 @@
                             <input type="text" id="idol-group" required>
                         </div>
                         <div class="form-group">
-                            <label for="idol-photos">照片：</label>
-                            <input type="file" id="idol-photos" name="photos" multiple accept="image/*" required>
+                            <div class="file-upload-container">
+                                <label for="idol-photos">照片：</label>
+                                <label class="custom-file-upload">
+                                    选择文件
+                                    <input type="file" id="idol-photos" name="photos" multiple accept="image/*" required>
+                                </label>
+                                <span class="file-name" id="file-name"></span>
+                            </div>
                         </div>
                         <div class="form-group">
                             <label for="idol-homepage">个人主页链接：</label>
@@ -141,7 +147,7 @@
         // 获取DOM元素
         const modal = document.getElementById('add-idol-form');
         const addIdolBtn = document.getElementById('add-idol-btn');
-        const closeBtn = document.getElementsByClassName('close')[0];
+        const closeBtn = modal.querySelector('.close');
         const idolForm = document.getElementById('idol-form');
 
         const modals = {
@@ -270,7 +276,7 @@
 
         // 点击模态框外部关闭
         window.onclick = function(event) {
-            if (event.target == modal) {
+            if (event.target == modal || event.target.classList.contains('modal')) {
                 modal.style.display = 'none';
             }
         }

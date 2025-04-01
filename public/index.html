@@ -143,12 +143,7 @@
 
         // 处理头像点击事件
         function handleAvatarClick() {
-            const currentUserId = localStorage.getItem('currentUserId');
-            if (currentUserId) {
-                window.location.href = '/profile.html';
-            } else {
-                window.location.href = '/login.html';
-            }
+            window.location.href = '/profile.html';
         }
 
         (async function loadUserAvatar() {
